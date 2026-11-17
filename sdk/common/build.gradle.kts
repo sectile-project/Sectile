@@ -1,9 +1,9 @@
 plugins {
-    id("java-library")
+    id("sectile.module")
 }
 
 dependencies {
-    api(project(":kernel:api"))
-    api(project(":networking:api"))
-    api(project(":sdk:gradle-extension:shared"))
+    compileOnly(project(":kernel:api"))
+    compileOnly(project(":networking:api"))
+    compileOnly(project(":sdk:gradle-extension:shared"))
 }

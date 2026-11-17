@@ -1,0 +1,23 @@
+package dev.sectile.kernel.config.section
+
+import dev.sectile.kernel.config.ConfigSection
+
+class MapConfigSection(
+    override val data: MutableMap<String, Any?> = LinkedHashMap(),
+    override val name: String = "",
+) : ConfigSection {
+
+    constructor(map: MutableMap<String, Any?>) : this(data = map)
+
+    override fun toString(): String = "name:$name, data:$data"
+
+    @Suppress("UNCHECKED_CAST")
+    override fun <T> getList(key: String, clazz: Class<T>): MutableList<T> {
+        val value = get(key)
+        if (value !is MutableList<*>) {
+            return mutableListOf()
+        }
+        value.removeIf { next: Any? -> next == null || next.javaClass != clazz }
+        return value as MutableList<T>
+    }
+}

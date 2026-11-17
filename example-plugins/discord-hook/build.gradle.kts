@@ -1,15 +1,10 @@
 plugins {
-    id("codes.reactor.plugin-metadata")
+    id("sectile.module")
+    id("dev.sectile.plugin-metadata")
 }
 
 dependencies {
+    compileOnly(project(":kernel:api"))
     compileOnly(project(":sdk:common"))
-}
-
-reactorPluginMetadata {
-    packageName.set("codes.reactor.plugin.discordhook")
-    /*
-    * includeSubpackages.set(false)
-    * failOnMultiplePlugins.set(true)
-    * */
+    compileOnly(project(":sdk:gradle-extension:shared"))
 }

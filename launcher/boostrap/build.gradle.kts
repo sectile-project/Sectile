@@ -1,16 +1,18 @@
+plugins {
+    id("sectile.module")
+}
+
 dependencies {
-    implementation(kotlin("stdlib"))
+    implementation(library("jline-terminal"))
+    implementation(library("jline-reader"))
 
-    val jline = findProperty("jlineVersion")
-    implementation("org.jline:jline-terminal:$jline")
-    implementation("org.jline:jline-reader:$jline")
+    implementation(project(":kernel:api"))
+    implementation(project(":kernel:micro"))
 
-    compileOnly(project(":kernel:api"))
-    compileOnly(project(":kernel:micro"))
+    implementation(project(":sdk:bundled"))
+    implementation(project(":sdk:common"))
 
-    compileOnly(project(":sdk:bundled"))
-
-    compileOnly(project(":networking:api"))
-    compileOnly(project(":networking:protocol"))
-    compileOnly(project(":networking:internal"))
+    implementation(project(":networking:api"))
+    implementation(project(":networking:protocol"))
+    implementation(project(":networking:internal"))
 }

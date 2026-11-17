@@ -1,4 +1,7 @@
+plugins {
+    id("sectile.module")
+}
+
 dependencies {
-    compileOnly(project(":kernel:api"))
-    testImplementation(project(":kernel:api"))
+    implementation(project(":kernel:api"))
 }

@@ -11,6 +11,15 @@ threads-to-use: 0
 # Maximum inactivity time before closing the connection (in seconds).
 read-timeout: 30s
 
+# Maximum inactivity time before closing the connection once the player is in the world
+# (in seconds). The client can stay idle for a while on the loading screen.
+play-timeout: 120s
+
+# Name and description of the server, shown to the clients.
+server-name: "Sectile"
+motd: "A Sectile server"
+max-players: 100
+
 # Setting in the Zstandard (ZSTD) algorithm that determines the trade-off
 # between compression speed and compression ratio, with levels typically ranging from 1 (fastest, lowest ratio)
 # to 22 (slowest, highest ratio)
@@ -22,9 +31,30 @@ zstd-compression-level: 3
 # Without this, you might have to wait a few minutes for the OS to clear the port.
 reuse-address: true # SO_REUSEADDR: Recommended set in true
 
-quic:
-  # Initial maximum data size (Stream & Connection) in bytes
-  max-data: 10485760 # 10 MB
+# Rate limit per connection (token bucket).
+# Set packets-per-second to 0 to disable it.
+rate-limit:
+  burst: 500
+  packets-per-second: 2000
 
-  # Maximum bidirectional streams per connection
-  max-streams: 100
+# Authentication.
+# mode:
+#   authenticated - the client must present a valid identity token and the server must
+#                    authenticate itself against the Hytale Session Service. This is the
+#                    only mode the official Hytale client accepts: with "insecure" the
+#                    client logs in but refuses to enter the world ("Server requires
+#                    development mode which is not supported in this build").
+#   insecure      - no identity check. Only useful for local development with a modified
+#                    client; the official client will not let you into the world.
+#
+# If no tokens are configured and the mode is "authenticated", the server starts the
+# device authorization flow on startup (open the printed URL and enter the code). The
+# resulting credentials are stored in auth.json and reused on the next start.
+auth:
+  mode: "authenticated"
+
+  # Base URL of the Hytale Session Service. It is also the expected "iss" of the tokens.
+  session-service-url: "https://sessions.hytale.com"
+
+  # Password required from the players. Leave empty to not ask for a password.
+  password: ""

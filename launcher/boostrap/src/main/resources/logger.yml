@@ -13,6 +13,7 @@ prefix:
 
 console:
   enable: true
+  useJLine: false # Allow highlight, auto-complete but uses more resources
 
   levels:
     debug: false

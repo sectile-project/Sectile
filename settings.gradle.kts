@@ -1,30 +1,42 @@
 pluginManagement {
-    includeBuild("sdk/gradle-extension/reactor-gradle-plugin")
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+    includeBuild("build-logic")
+    includeBuild("sdk/gradle-extension/plugin")
+}
 
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         mavenCentral()
-        gradlePluginPortal()
     }
 }
 
-rootProject.name = "Reactor"
+rootProject.name = "Sectile"
 
-include("kernel:micro")
-include("kernel:api")
+include(
+    ":kernel:api",
+    ":kernel:micro",
 
-include("sdk:common")
-include("sdk:bundled")
+    ":networking:api",
+    ":networking:internal",
+    ":networking:protocol",
 
-include("networking:api")
-include("networking:protocol")
-include("networking:internal")
+    ":sdk:bundled",
+    ":sdk:common",
+    ":sdk:gradle-extension:shared",
+    ":sdk:gradle-extension:plugin",
 
-include("launcher:runtime")
-include("launcher:boostrap")
-include("launcher:debug")
+    ":launcher:boostrap",
+    ":launcher:debug",
+    ":launcher:isolated",
 
-include("sdk:gradle-extension:shared")
-include("sdk:gradle-extension:reactor-gradle-plugin")
+    ":tools:autogenerate",
+
+    ":engine:chat"
+)
 
 file("example-plugins").listFiles()?.forEach { pluginDir ->
     if (pluginDir.isDirectory) {

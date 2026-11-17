@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="GradleMigrationSettings" migrationVersion="1" />
+  <component name="GradleSettings">
+    <option name="linkedExternalProjectsSettings">
+      <GradleProjectSettings>
+        <compositeConfiguration>
+          <compositeBuild compositeDefinitionSource="SCRIPT">
+            <builds>
+              <build path="$PROJECT_DIR$/build-logic" name="build-logic">
+                <projects>
+                  <project path="$PROJECT_DIR$/build-logic" />
+                </projects>
+              </build>
+              <build path="$PROJECT_DIR$/sdk/gradle-extension/plugin" name="sectile-gradle-plugin">
+                <projects>
+                  <project path="$PROJECT_DIR$/sdk/gradle-extension/plugin" />
+                </projects>
+              </build>
+            </builds>
+          </compositeBuild>
+        </compositeConfiguration>
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="modules">
+          <set>
+            <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/build-logic" />
+            <option value="$PROJECT_DIR$/engine" />
+            <option value="$PROJECT_DIR$/engine/chat" />
+            <option value="$PROJECT_DIR$/example-plugins" />
+            <option value="$PROJECT_DIR$/example-plugins/debug" />
+            <option value="$PROJECT_DIR$/example-plugins/discord-hook" />
+            <option value="$PROJECT_DIR$/kernel" />
+            <option value="$PROJECT_DIR$/kernel/api" />
+            <option value="$PROJECT_DIR$/kernel/micro" />
+            <option value="$PROJECT_DIR$/launcher" />
+            <option value="$PROJECT_DIR$/launcher/boostrap" />
+            <option value="$PROJECT_DIR$/launcher/debug" />
+            <option value="$PROJECT_DIR$/launcher/isolated" />
+            <option value="$PROJECT_DIR$/networking" />
+            <option value="$PROJECT_DIR$/networking/api" />
+            <option value="$PROJECT_DIR$/networking/internal" />
+            <option value="$PROJECT_DIR$/networking/protocol" />
+            <option value="$PROJECT_DIR$/sdk" />
+            <option value="$PROJECT_DIR$/sdk/bundled" />
+            <option value="$PROJECT_DIR$/sdk/common" />
+            <option value="$PROJECT_DIR$/sdk/gradle-extension" />
+            <option value="$PROJECT_DIR$/sdk/gradle-extension/plugin" />
+            <option value="$PROJECT_DIR$/sdk/gradle-extension/shared" />
+            <option value="$PROJECT_DIR$/tools" />
+            <option value="$PROJECT_DIR$/tools/autogenerate" />
+          </set>
+        </option>
+        <option name="myGradleHome" value="C:\Gradle\gradle-9.4.1-bin\gradle-9.4.1" />
+      </GradleProjectSettings>
+    </option>
+  </component>
+</project>

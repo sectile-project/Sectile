@@ -1,7 +1,10 @@
 plugins {
-    id("java-library")
+    id("sectile.module")
 }
+
 dependencies {
-    api(project(":sdk:common"))
-    implementation("org.snakeyaml:snakeyaml-engine:${findProperty("snakeYamlVersion")}")
+    compileOnly(project(":kernel:api"))
+    implementation(project(":sdk:common"))
+
+    testImplementation(project(":kernel:api"))
 }
