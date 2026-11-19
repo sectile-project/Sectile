@@ -1,9 +1,6 @@
 enable: true
 
 prefix:
-  # Pattern based on java.time.format.DateTimeFormatter
-  dateFormatter: "HH:mm:ss"
-
   # Available placeholders: %time%
   debug: "[DEBUG %time%] "
   log:   "[LOG %time%] "
@@ -13,7 +10,7 @@ prefix:
 
 console:
   enable: true
-  useJLine: true # Allow highlight, auto-complete and more user-friendly experience but uses more resources
+  useJLine: false # Allow highlight, auto-complete and more user-friendly experience but uses more resources (and increase startup time in 200ms)
 
   levels:
     debug: false

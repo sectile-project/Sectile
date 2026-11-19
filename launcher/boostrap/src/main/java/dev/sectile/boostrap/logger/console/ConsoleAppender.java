@@ -11,8 +11,8 @@ import org.jetbrains.annotations.Nullable;
 import org.jline.reader.LineReader;
 
 public final class ConsoleAppender implements LogAppender {
-  private final PrintWriter writer;
-  private final @Nullable LineReader lineReader;
+  private volatile PrintWriter writer;
+  private volatile @Nullable LineReader lineReader;
   private final ConsoleStyle[] styles;
   private final StringBuilder lineBuffer = new StringBuilder(256);
 
@@ -35,6 +35,11 @@ public final class ConsoleAppender implements LogAppender {
     this.styles[LogLevel.ERROR.ordinal()] = loggerLevels.getError() ? errorStyle : null;
   }
 
+  public void attachJLine(final PrintWriter writer, final LineReader lineReader) {
+    this.writer = writer;
+    this.lineReader = lineReader;
+  }
+
   @Override
   public void append(MutableLogEntry entry) {
     final ConsoleStyle style = this.styles[entry.level];
@@ -43,7 +48,8 @@ public final class ConsoleAppender implements LogAppender {
       return;
     }
 
-    if (lineReader != null && lineReader.isReading()) {
+    final LineReader reader = this.lineReader;
+    if (reader != null && reader.isReading()) {
       lineBuffer.setLength(0);
       lineBuffer
           .append(style.getPrefix())
@@ -58,22 +64,22 @@ public final class ConsoleAppender implements LogAppender {
       }
       lineBuffer.append(style.getAfterText());
       // printAbove clears the active prompt, prints the log line, and redraws the prompt below it.
-      lineReader.printAbove(lineBuffer.toString());
+      reader.printAbove(lineBuffer.toString());
       return;
     }
 
-    writer
-        .append(style.getPrefix())
+    final PrintWriter out = this.writer;
+    out.append(style.getPrefix())
         .append(entry.prefix)
         .append(style.getText())
         .append(entry.message);
 
     if (entry.throwable != null) {
-      writer.append('\n');
-      entry.throwable.printStackTrace(writer);
+      out.append('\n');
+      entry.throwable.printStackTrace(out);
     }
-    writer.append(style.getAfterText()).append('\n');
-    writer.flush();
+    out.append(style.getAfterText()).append('\n');
+    out.flush();
   }
 
   @Override

@@ -12,8 +12,6 @@ class LoggerConfig(section: ConfigSection) {
 }
 
 class PrefixConfig(section: ConfigSection) {
-    val dateFormatter = section.getString("dateFormatter", "HH:mm:ss")
-
     val debug = section.getString("debug", "[DEBUG %time%] ")
     val log = section.getString("log", "[LOG %time%] ")
     val info = section.getString("info", "[INFO %time%] ")

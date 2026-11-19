@@ -21,11 +21,11 @@ internal class PluginStarter(
             return
         }
 
-        val entries = pluginIds.mapNotNull { catalog.entry(it) }
-        val graph = PluginLoadGraphBuilder().build(entries.map { it.metadata })
+        val graphBuilder = PluginLoadGraphBuilder()
+        val graph = graphBuilder.build(pluginIds.mapNotNull { catalog.entry(it)?.metadata })
 
         if (config.loading.parallel) {
-            startParallel(graph.connectedComponents())
+            startParallel(graph, graphBuilder)
             return
         }
 
@@ -45,54 +45,58 @@ internal class PluginStarter(
         }
     }
 
-    private fun startParallel(components: Collection<Set<PluginId>>) {
+    private fun startParallel(graph: PluginDependencyGraph, graphBuilder: PluginLoadGraphBuilder) {
+        val components = graph.connectedComponents()
         if (components.isEmpty()) {
             return
         }
 
-        val executor = Executors.newVirtualThreadPerTaskExecutor()
-        val timeoutInMillis = config.loading.timeOut.inWholeMilliseconds
-        val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutInMillis)
+        // Run parallel plugin loading asynchronously so server startup does not wait on plugins;
+        // this coordinator virtual thread enforces the timeout and cleans up the executor on exit.
+        Thread.ofVirtual().name("sectile-plugin-starter").start {
+            val executor = Executors.newVirtualThreadPerTaskExecutor()
+            val timeoutInMillis = config.loading.timeOut.inWholeMilliseconds
+            val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutInMillis)
 
-        try {
-            val futures = components.associateWith { component ->
-                executor.submit(
-                    Callable {
-                        val componentGraph = PluginLoadGraphBuilder().build(
-                            component.mapNotNull { catalog.entry(it)?.metadata },
-                        )
-                        startSequence(componentGraph)
-                    },
-                )
-            }
-
-            for ((component, future) in futures) {
-                val remainingNanos = deadline - System.nanoTime()
-                if (remainingNanos <= 0L) {
-                    cancelComponent(component, future, timeoutInMillis)
-                    continue
-                }
-
-                try {
-                    future.get(remainingNanos, TimeUnit.NANOSECONDS)
-                } catch (_: TimeoutException) {
-                    cancelComponent(component, future, timeoutInMillis)
-                } catch (_: CancellationException) {
-                    // Already canceled by timeout or by another controlled path.
-                } catch (error: ExecutionException) {
-                    val cause = error.cause
-                    if (cause !is PluginStartupCancelledException) {
-                        logger.error("A plugin loading group $component failed.", cause ?: error)
+            try {
+                val futures = if (components.size == 1) {
+                    val only = components.first()
+                    mapOf(only to executor.submit { startSequence(graph) })
+                } else {
+                    components.associateWith { component ->
+                        executor.submit {
+                            val componentGraph = graphBuilder.build(
+                                component.mapNotNull { catalog.entry(it)?.metadata },
+                            )
+                            startSequence(componentGraph)
+                        }
                     }
-                } catch (error: Exception) {
-                    logger.error("A plugin loading group $component failed.", error)
                 }
-            }
-        } finally {
-            executor.shutdownNow()
 
-            if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
-                logger.warn("Plugin executor did not terminate within timeout.")
+                for ((component, future) in futures) {
+                    val remainingNanos = deadline - System.nanoTime()
+                    if (remainingNanos <= 0L) {
+                        cancelComponent(component, future, timeoutInMillis)
+                        continue
+                    }
+
+                    try {
+                        future.get(remainingNanos, TimeUnit.NANOSECONDS)
+                    } catch (_: TimeoutException) {
+                        cancelComponent(component, future, timeoutInMillis)
+                    } catch (_: CancellationException) {
+                        // Already canceled by timeout or by another controlled path.
+                    } catch (error: ExecutionException) {
+                        val cause = error.cause
+                        if (cause !is PluginStartupCancelledException) {
+                            logger.error("A plugin loading group $component failed.", cause ?: error)
+                        }
+                    } catch (error: Exception) {
+                        logger.error("A plugin loading group $component failed.", error)
+                    }
+                }
+            } finally {
+                executor.shutdownNow()
             }
         }
     }

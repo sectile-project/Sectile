@@ -26,6 +26,11 @@ abstract class BaseCommand(
     private val _subcommands = LinkedHashMap<String, Command>()
     private val subcommandAliases = HashMap<String, Command>()
     protected var customExecutor: ((CommandSender, Arguments) -> Unit)? = null
+    private val overridesExecute: Boolean =
+        javaClass.getMethod("execute", CommandSender::class.java, Arguments::class.java).declaringClass != BaseCommand::class.java
+
+    override val hasExecutor: Boolean
+        get() = customExecutor != null || overridesExecute
 
     override val aliases: Set<String>
         get() = _aliases

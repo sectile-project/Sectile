@@ -47,7 +47,6 @@ class AuthConfig(
         AuthMode.AUTHENTICATED -> when {
             sessionServiceUrl.isNullOrEmpty() -> "auth.session-service-url is required"
             audience.isNullOrEmpty() -> "auth.audience is required"
-            serverSessionToken.isNullOrEmpty() -> "auth.session-token is required"
             else -> null
         }
     }

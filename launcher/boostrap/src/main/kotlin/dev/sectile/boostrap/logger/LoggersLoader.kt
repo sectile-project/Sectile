@@ -2,6 +2,7 @@ package dev.sectile.boostrap.logger
 
 import dev.sectile.boostrap.console.Console
 import dev.sectile.boostrap.console.ConsoleSender
+import dev.sectile.boostrap.console.jline.JLineConsole
 import dev.sectile.boostrap.console.jline.createJLineConsole
 import dev.sectile.boostrap.console.minimal.MinimalConsole
 import dev.sectile.boostrap.logger.console.ConsoleAppender
@@ -21,7 +22,7 @@ import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
-import java.time.format.DateTimeFormatter
+import java.util.concurrent.CompletableFuture
 
 class LoggersLoader {
 
@@ -29,6 +30,8 @@ class LoggersLoader {
     val consoleSender: ConsoleSender = ConsoleSender()
     private var printWriter: PrintWriter? = null
     private var lineReader: LineReader? = null
+    private var consoleAppender: ConsoleAppender? = null
+    private var consoleFuture: CompletableFuture<Console>? = null
 
     fun load(configService: ConfigService): Logger {
         val section = configService.createIfAbsentAndLoad("logger")
@@ -46,7 +49,7 @@ class LoggersLoader {
         val autoFlush = config.logs.autoFlush
 
         val prefix = config.prefix
-        val loggerFormatter = LogFormatter(DateTimeFormatter.ofPattern(prefix.dateFormatter))
+        val loggerFormatter = LogFormatter()
 
         val processor = LogProcessorThread(
             ringBuffer,
@@ -63,7 +66,6 @@ class LoggersLoader {
                 processor.join(5000)
             } catch (_: InterruptedException) {}
         }
-
         val logger = BoostrapLogger(
             JavaLoggerFormatter,
             ringBuffer,
@@ -74,22 +76,33 @@ class LoggersLoader {
             prefix.error,
         )
         consoleSender.attachLogger(logger)
+
         return logger
     }
 
-    private fun createConsole(config: LoggerConfig) {
-        if (config.console.useJLine) {
-            val jLineConsole = createJLineConsole(consoleSender)
-            if (jLineConsole != null) {
-                console = jLineConsole
-                printWriter = jLineConsole.terminal.writer()
-                lineReader = jLineConsole.reader
-                return
-            }
+    fun resolveConsole(): Console? {
+        val pending = consoleFuture ?: return console
+        val resolved = pending.join()
+        consoleFuture = null
+        console = resolved
+        if (resolved is JLineConsole) {
+            consoleAppender?.attachJLine(resolved.terminal.writer(), resolved.reader)
         }
-        console = MinimalConsole(consoleSender)
+        return resolved
+    }
+
+    private fun createConsole(config: LoggerConfig) {
         printWriter = PrintWriter(System.out)
         lineReader = null
+
+        if (config.console.useJLine) {
+            // Build JLine terminal and reader off the startup thread; attached before console.run().
+            consoleFuture = CompletableFuture.supplyAsync {
+                createJLineConsole(consoleSender) ?: MinimalConsole(consoleSender)
+            }
+            return
+        }
+        console = MinimalConsole(consoleSender)
     }
 
     private fun loadConsoleLogger(console: ConsoleConfig): ConsoleAppender? {
@@ -106,7 +119,7 @@ class LoggersLoader {
             styles.info,
             styles.warn,
             styles.error,
-        )
+        ).also { consoleAppender = it }
     }
 
     private fun loadFileLogger(logs: FileLogsConfig): FileAppender? {

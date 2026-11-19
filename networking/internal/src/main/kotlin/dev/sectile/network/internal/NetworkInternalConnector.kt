@@ -17,6 +17,7 @@ import dev.sectile.network.protocol.connection.ServerDisconnectPacket
 import dev.sectile.network.protocol.enums.DisconnectType
 import dev.sectile.network.protocol.structures.FormattedMessage
 import io.netty.buffer.Unpooled
+import java.util.EnumMap
 import java.util.concurrent.CompletableFuture
 
 class NetworkInternalConnector private constructor(
@@ -35,23 +36,24 @@ class NetworkInternalConnector private constructor(
         fun init(config: NetworkConfig, logger: Logger): CompletableFuture<Unit> {
             if (ref != null) error("Network internal connector already initialized")
 
-            // Register all protocol packet definitions before accepting client streams.
-            wireDisconnectSupport()
-
-            val storages = ConnectionStage.entries.associateWith {
-                StatePacketHandlerStorage(PacketRegistry.MAX_PACKETS)
+            val storages = EnumMap<ConnectionStage, PacketHandlerStorage>(ConnectionStage::class.java)
+            for (stage in ConnectionStage.entries) {
+                storages[stage] = StatePacketHandlerStorage(PacketRegistry.MAX_PACKETS)
             }
-
-            // The stage machine owns the whole lifecycle of a connection: every stage
-            // registers the handlers of the packets it waits for.
-            StageRegistry.register(storages, StageEnvironment.create(config, logger))
 
             val connection = ServerConnection()
             ref = NetworkInternalConnector(config, connection, storages)
 
             NetworkConnector.init(storages, PacketSenderInternal())
 
-            return connection.init(config, logger)
+            // Offload protocol/stage wiring so startup is not blocked by classloading Netty and stage handlers;
+            // wiring completes before quic.bind accepts any client packet.
+            val stagesFuture = CompletableFuture.runAsync {
+                wireDisconnectSupport()
+                StageRegistry.register(storages, StageEnvironment.create(config, logger))
+            }
+
+            return stagesFuture.thenCompose { connection.init(config, logger) }
         }
 
         fun shutdown(): CompletableFuture<Unit> = connector.connection.shutdown()

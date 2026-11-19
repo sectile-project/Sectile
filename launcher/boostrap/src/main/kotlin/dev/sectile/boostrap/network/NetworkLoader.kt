@@ -5,11 +5,11 @@ import dev.sectile.kernel.config.ConfigSection
 import dev.sectile.kernel.config.ConfigService
 import dev.sectile.kernel.logger.Logger
 import dev.sectile.network.internal.NetworkInternalConnector
-import dev.sectile.network.internal.auth.ServerAuthenticator
 import dev.sectile.network.internal.config.AuthConfig
 import dev.sectile.network.internal.config.AuthMode
 import dev.sectile.network.internal.config.NetworkConfig
 import dev.sectile.sdk.util.TimeFormatter
+import java.util.UUID
 import kotlin.math.max
 import kotlin.math.min
 
@@ -51,43 +51,12 @@ fun loadNetwork(configService: ConfigService, logger: Logger) {
 private fun loadAuth(section: ConfigSection, logger: Logger): AuthConfig {
     val mode = section.getEnum("mode", AuthMode.AUTHENTICATED)
 
-    var sessionToken: String? = null
-    var identityToken: String? = null
-
-    if (mode == AuthMode.AUTHENTICATED) {
-        val cached = ServerAuthenticator.load()
-        if (cached != null && cached.valid) {
-            logger.info(
-                "Using cached server credentials for '${cached.profileName}' " +
-                    "(expires at ${cached.expiresAt})",
-            )
-            sessionToken = cached.sessionToken
-            identityToken = cached.identityToken
-        } else {
-            if (cached != null) {
-                logger.warn("The cached server credentials have expired, authenticating again")
-            }
-            val credentials = ServerAuthenticator.authenticate(logger)
-            if (credentials == null) {
-                logger.error("Server authentication failed")
-                throw IllegalStateException(
-                    "Server authentication failed. Set HYTALE_SERVER_SESSION_TOKEN and " +
-                        "HYTALE_SERVER_IDENTITY_TOKEN, or set auth.mode to 'insecure'.",
-                )
-            }
-            sessionToken = credentials.sessionToken
-            identityToken = credentials.identityToken
-        }
-    }
-
-    val audience = ServerAuthenticator.newAudience()
-
     val auth = AuthConfig(
         mode = mode,
         sessionServiceUrl = section.getString("session-service-url") ?: "https://sessions.hytale.com",
-        audience = audience,
-        serverSessionToken = sessionToken,
-        serverIdentityToken = identityToken,
+        audience = UUID.randomUUID().toString(),
+        serverSessionToken = null,
+        serverIdentityToken = null,
         password = section.getString("password"),
     )
 
@@ -100,9 +69,7 @@ private fun loadAuth(section: ConfigSection, logger: Logger): AuthConfig {
     if (auth.authenticated) {
         logger.info("Authentication enabled (session service: ${auth.sessionServiceUrl})")
     } else {
-        logger.warn(
-            "Authentication disabled: the official Hytale client refuses to enter insecure servers",
-        )
+        logger.warn("Authentication disabled (auth.mode=insecure)")
     }
 
     return auth

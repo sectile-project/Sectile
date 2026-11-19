@@ -7,11 +7,13 @@ import dev.sectile.network.internal.auth.jwt.JwksCache
 import dev.sectile.network.internal.config.AuthConfig
 import java.security.cert.X509Certificate
 import java.time.Instant
-import java.util.UUID
+import java.time.OffsetDateTime
+import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
+import kotlin.math.max
 
 /**
  * Authentication services shared by the server.
@@ -51,10 +53,20 @@ object NetworkAuth {
     private const val REFRESH_CHECK_SECONDS = 300L
     private const val REFRESH_WINDOW_SECONDS = 600L
 
-    private val scheduler: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { runnable ->
-        val thread = Thread(runnable, "AuthRefresh")
-        thread.isDaemon = true
-        thread
+    val isAuthenticated: Boolean
+        get() = !sessionToken.isNullOrEmpty() && !identityToken.isNullOrEmpty()
+
+    private val scheduler: ScheduledExecutorService by lazy {
+        Executors.newSingleThreadScheduledExecutor { runnable ->
+            val thread = Thread(runnable, "AuthRefresh")
+            thread.isDaemon = true
+            thread
+        }
+    }
+
+    fun minutesUntilExpire(isoTime: String?): Long {
+        if (isoTime == null) return 0L
+        return max(0L, (OffsetDateTime.parse(isoTime).toInstant().toEpochMilli() - System.currentTimeMillis()) / 60_000L)
     }
 
     fun init(config: AuthConfig, serverCertificate: X509Certificate?, logger: Logger) {
@@ -68,6 +80,27 @@ object NetworkAuth {
             return
         }
 
+        if (sessionToken.isNullOrEmpty() || identityToken.isNullOrEmpty()) {
+            val cached = ServerAuthenticator.load()
+            if (cached != null && cached.valid) {
+                logger.info(
+                    "Using cached server credentials for '${cached.profileName}' " +
+                        "(expires in ${minutesUntilExpire(cached.expiresAt)} minutes)",
+                )
+                sessionToken = cached.sessionToken
+                identityToken = cached.identityToken
+                expiresAt = parseExpiry(cached.expiresAt)
+            } else {
+                if (cached != null) {
+                    logger.warn("Cached server credentials have expired. Run '/auth login' to authenticate.")
+                } else {
+                    logger.warn("No server credentials found. Run '/auth login' to authenticate.")
+                }
+            }
+        } else {
+            expiresAt = parseExpiry(ServerAuthenticator.load()?.expiresAt)
+        }
+
         val url = config.sessionServiceUrl ?: return
         val client = SessionServiceClient(url, config.httpTimeout, logger = logger)
         sessionService = client
@@ -75,11 +108,19 @@ object NetworkAuth {
         jwksCache = cache
         validator = JWTValidator(cache, url, config.audience, logger)
 
-        // The expiration date of the game session
-        expiresAt = parseExpiry(ServerAuthenticator.load()?.expiresAt)
-
-        scheduleRefresh(logger)
+        if (!sessionToken.isNullOrEmpty()) {
+            scheduleRefresh(logger)
+        }
         prewarmJwks(logger)
+    }
+
+    fun updateCredentials(credentials: ServerCredentials, logger: Logger?) {
+        sessionToken = credentials.sessionToken
+        identityToken = credentials.identityToken
+        expiresAt = parseExpiry(credentials.expiresAt)
+        if (sessionService != null) {
+            scheduleRefresh(logger)
+        }
     }
 
     private fun prewarmJwks(logger: Logger?) {
@@ -135,7 +176,7 @@ object NetworkAuth {
             sessionToken = session.sessionToken
             identityToken = session.identityToken
             expiresAt = parseExpiry(session.expiresAt)
-            logger?.info("Game session refreshed (expires at ${session.expiresAt})")
+            logger?.info("Game session refreshed (expires in ${minutesUntilExpire(session.expiresAt)} minutes)")
             ServerAuthenticator.updateTokens(session.sessionToken, session.identityToken, session.expiresAt)
             return
         }
@@ -169,7 +210,7 @@ object NetworkAuth {
         sessionToken = newSession.sessionToken
         identityToken = newSession.identityToken
         expiresAt = parseExpiry(newSession.expiresAt)
-        logger?.info("New game session created (expires at ${newSession.expiresAt})")
+        logger?.info("New game session created (expires in ${minutesUntilExpire(newSession.expiresAt)} minutes)")
         ServerAuthenticator.updateTokens(newSession.sessionToken, newSession.identityToken, newSession.expiresAt)
     }
 

@@ -6,6 +6,7 @@ import dev.sectile.engine.api.command.Command
 import dev.sectile.engine.api.command.CommandRegistration
 import dev.sectile.engine.api.command.CommandRegistry
 import dev.sectile.engine.api.command.CommandSender
+import dev.sectile.engine.api.command.argument.Arguments
 import dev.sectile.engine.api.command.argument.CommandArg
 import dev.sectile.engine.api.player.Player
 import java.util.Locale
@@ -21,6 +22,33 @@ class CommandBuilder(
 
     override val hasExecutor: Boolean
         get() = customExecutor != null
+
+    fun executesPlayer(
+        rejectMessage: String = "Only players can execute this command.",
+        block: (Player, Arguments) -> Unit,
+    ) {
+        executes { sender, args ->
+            val player = sender as? Player
+            if (player == null) {
+                sender.receiveMessage(rejectMessage)
+            } else {
+                block(player, args)
+            }
+        }
+    }
+
+    fun executesConsole(
+        rejectMessage: String = "Only the console can execute this command.",
+        block: (CommandSender, Arguments) -> Unit,
+    ) {
+        executes { sender, args ->
+            if (sender is Player) {
+                sender.receiveMessage(rejectMessage)
+            } else {
+                block(sender, args)
+            }
+        }
+    }
 }
 
 fun command(

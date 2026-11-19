@@ -1,6 +1,7 @@
 package dev.sectile.boostrap.logger.file;
 
 import java.io.*;
+import java.util.TimeZone;
 import java.util.zip.GZIPOutputStream;
 
 public final class LogCompressor {
@@ -47,19 +48,21 @@ public final class LogCompressor {
     }
   }
 
+  private static final TimeZone TIME_ZONE = TimeZone.getDefault();
+
   private static String millisToFileName(final long millis) {
     final long SEC_PER_MIN = 60;
     final long SEC_PER_HOUR = 3600;
     final long SEC_PER_DAY = 86400;
 
-    final long totalSeconds = millis / 1000;
-    final long currentDaySeconds = totalSeconds % SEC_PER_DAY;
+    final long totalSeconds = Math.floorDiv(millis + TIME_ZONE.getOffset(millis), 1000L);
+    final long currentDaySeconds = Math.floorMod(totalSeconds, SEC_PER_DAY);
 
     final long hour = currentDaySeconds / SEC_PER_HOUR;
     final long minute = (currentDaySeconds % SEC_PER_HOUR) / SEC_PER_MIN;
     final long second = currentDaySeconds % SEC_PER_MIN;
 
-    long totalDays = totalSeconds / SEC_PER_DAY;
+    long totalDays = Math.floorDiv(totalSeconds, SEC_PER_DAY);
 
     // Hinnant
     totalDays += 719468;

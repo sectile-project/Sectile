@@ -5,6 +5,7 @@ import dev.sectile.boostrap.command.PluginsCommand
 import dev.sectile.boostrap.command.StopCommand
 import dev.sectile.boostrap.command.WhereAmICommand
 import dev.sectile.boostrap.command.WhoCommand
+import dev.sectile.boostrap.command.authCommand
 import dev.sectile.boostrap.console.Console
 import dev.sectile.boostrap.logger.LoggersLoader
 import dev.sectile.boostrap.network.loadNetwork
@@ -33,21 +34,21 @@ fun startServer(publicClassLoader: ClassLoader, startTime: Long) {
 
     val pluginStarter = Microkernel.init(logger, loadPluginConfig(configService), publicClassLoader)
 
-    startSDK()
     startEngine()
+    startSDK()
 
     pluginStarter.run()
 
-    registerBuiltinCommands(loggersLoader.console)
+    val console = loggersLoader.resolveConsole()
+    registerBuiltinCommands(console)
 
     loadNetwork(configService, logger)
-
     WorldBootstrap.init(logger)
     CommandBootstrap.initNetwork(logger)
 
     logger.info("Server started in ${System.currentTimeMillis() - startTime}ms")
 
-    loggersLoader.console?.run()
+    console?.run()
 }
 
 private fun startSDK() {
@@ -66,6 +67,7 @@ private fun registerBuiltinCommands(console: Console?) {
         WhereAmICommand(),
         WhoCommand(),
         PluginsCommand(),
+        authCommand(),
         StopCommand(console),
     )
 }

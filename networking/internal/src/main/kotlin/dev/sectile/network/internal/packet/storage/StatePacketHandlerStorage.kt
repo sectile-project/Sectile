@@ -19,6 +19,7 @@ class StatePacketHandlerStorage(size: Int) : PacketHandlerStorage {
 
     override fun hasHandlers(packetId: Int): Boolean = packetId in packetHandlerStorage.indices && packetHandlerStorage[packetId] != null
 
+    @Synchronized
     override fun add(handler: PacketHandler) {
         val packetId = handler.definition.id
         requirePacketIdInRange(packetId)
@@ -27,6 +28,7 @@ class StatePacketHandlerStorage(size: Int) : PacketHandlerStorage {
         packetHandlerStorage[packetId] = currentStorage?.add(handler) ?: SingleHandlerStorage(handler)
     }
 
+    @Synchronized
     override fun remove(handler: PacketHandler) {
         val packetId = handler.definition.id
         requirePacketIdInRange(packetId)
@@ -46,6 +48,7 @@ class StatePacketHandlerStorage(size: Int) : PacketHandlerStorage {
         }
     }
 
+    @Synchronized
     override fun clear(packetId: Int) {
         requirePacketIdInRange(packetId)
         packetHandlerStorage[packetId] = null
