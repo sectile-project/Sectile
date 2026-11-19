@@ -1,9 +1,12 @@
 plugins {
     id("sectile.module")
+    `java-library`
 }
 
 dependencies {
-    compileOnly(project(":kernel:api"))
-    compileOnly(project(":networking:api"))
-    compileOnly(project(":sdk:gradle-extension:shared"))
+    compileOnlyApi(project(":kernel:api"))
+    compileOnlyApi(project(":networking:api"))
+    compileOnlyApi(project(":engine:api"))
+    compileOnlyApi(project(":engine:chat"))
+    compileOnlyApi(project(":sdk:gradle-extension:shared"))
 }

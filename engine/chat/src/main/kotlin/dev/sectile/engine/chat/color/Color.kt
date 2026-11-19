@@ -1,10 +1,5 @@
 package dev.sectile.engine.chat.color
 
-/**
- * The [Color] class represents a color in a chat system.
- * It provides methods to create colors from different formats (RGB, CMYK, HEX, etc.)
- * and also includes a set of predefined colors.
- */
 @JvmInline
 value class Color private constructor(
     val rgb: Int,
@@ -31,44 +26,26 @@ value class Color private constructor(
         val YELLOW = rgb(255, 255, 85)
         val WHITE = rgb(255, 255, 255)
 
-        /**
-         * Creates a color from integer RGB values. (0 to 255)
-         */
         fun rgb(red: Int, green: Int, blue: Int): Color = Color(((red and 0xFF) shl 16) or ((green and 0xFF) shl 8) or (blue and 0xFF))
 
-        /**
-         * Creates a color from floating-point RGB values (0.0 to 1.0).
-         */
         fun rgb(red: Float, green: Float, blue: Float): Color = rgb(
             (255 * red.coerceIn(0f, 1f)).toInt(),
             (255 * green.coerceIn(0f, 1f)).toInt(),
             (255 * blue.coerceIn(0f, 1f)).toInt(),
         )
 
-        /**
-         * Creates a color from CMYK values (0.0 to 1.0).
-         */
         fun cmyk(cyan: Float, magenta: Float, yellow: Float, key: Float): Color {
             val rgb = ColorConverter.cymkToRgb(cyan, yellow, magenta, key)
             return rgb(rgb[0], rgb[1], rgb[2])
         }
 
-        /**
-         * Creates a color from a hexadecimal integer value.
-         */
         fun hex(hex: Int): Color = Color(hex and 0xFFFFFF)
 
-        /**
-         * Creates a color from a hexadecimal string (e.g., "#RRGGBB" or "RRGGBB").
-         */
         fun hex(hex: String): Color {
             val rgb = ColorConverter.hexToRGB(hex)
             return rgb(rgb[0], rgb[1], rgb[2])
         }
 
-        /**
-         * Creates a color from a gray scale (0-255).
-         */
         fun gray(grayType: Int): Color {
             val gray = grayType and 0xFF
             return Color((gray shl 16) or (gray shl 8) or gray)

@@ -69,7 +69,8 @@ internal class KernelPluginScope :
         runCatching {
             provider.close()
         }.onFailure { throwable ->
-            val pluginId = (Thread.currentThread().contextClassLoader as PluginClassLoader).id
+            val pluginId = (Thread.currentThread().contextClassLoader as? PluginClassLoader)?.id
+                ?: "unknown"
 
             Microkernel.instance.rootLogger.error(
                 "Error while closing provider in plugin $pluginId",

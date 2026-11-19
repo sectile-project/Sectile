@@ -63,16 +63,6 @@ class NettyPlayerConnection(
         @Volatile override var ready: Boolean = false
 
         @Volatile override var viewRadiusChunks: Int = DEFAULT_VIEW_RADIUS_CHUNKS
-
-        @Volatile override var positionX: Double = 0.0
-
-        @Volatile override var positionY: Double = 0.0
-
-        @Volatile override var positionZ: Double = 0.0
-
-        @Volatile override var yaw: Float = 0f
-
-        @Volatile override var pitch: Float = 0f
     }
 
     private class NettyScheduledTask(

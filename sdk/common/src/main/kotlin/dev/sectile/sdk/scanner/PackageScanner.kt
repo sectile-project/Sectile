@@ -1,5 +1,6 @@
 package dev.sectile.sdk.scanner
 
+import dev.sectile.sdk.scanner.registrar.CommandRegistrar
 import dev.sectile.sdk.scanner.registrar.ListenerRegistrar
 import dev.sectile.sdk.scanner.registrar.ObjectRegistrar
 
@@ -165,6 +166,23 @@ interface PackageScanner {
         }
 
         registrar(ListenerRegistrar, *packages)
+    }
+
+    /**
+     * Registers command packages using the built-in [CommandRegistrar].
+     *
+     * All discovered [dev.sectile.engine.api.command.Command] classes will be instantiated using
+     * constructor injection and registered into the plugin scope's [dev.sectile.engine.api.command.CommandRegistry].
+     *
+     * If no packages are specified, the scanner defaults to `<plugin-root-package>.commands`.
+     */
+    fun commands(vararg packages: String) {
+        if (packages.isEmpty()) {
+            registrar(CommandRegistrar, "$defaultPackage.commands")
+            return
+        }
+
+        registrar(CommandRegistrar, *packages)
     }
 
     /**

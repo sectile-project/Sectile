@@ -35,7 +35,11 @@ include(
 
     ":tools:autogenerate",
 
-    ":engine:chat"
+    ":engine:chat",
+    ":engine:api",
+    ":engine:internal",
+    ":engine:world",
+    ":engine:command"
 )
 
 file("example-plugins").listFiles()?.forEach { pluginDir ->

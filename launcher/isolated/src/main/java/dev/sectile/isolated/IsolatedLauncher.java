@@ -72,7 +72,8 @@ public final class IsolatedLauncher {
 
   private static Path resolveOwnJar() throws Exception {
     final Path codeSource =
-        Paths.get(IsolatedLauncher.class.getProtectionDomain().getCodeSource().getLocation().toURI())
+        Paths.get(
+                IsolatedLauncher.class.getProtectionDomain().getCodeSource().getLocation().toURI())
             .toAbsolutePath()
             .normalize();
 

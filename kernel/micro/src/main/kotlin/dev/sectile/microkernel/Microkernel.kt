@@ -37,7 +37,7 @@ class Microkernel private constructor(
             parentClassLoader: ClassLoader = Kernel::class.java.classLoader,
             eventBus: EventBus = DefaultEventBus(logger),
             schedulerProvider: SchedulerProvider = KernelSchedulerProvider(),
-        ) {
+        ): Runnable {
             check(ref == null) { "Microkernel already initialized." }
 
             val pluginCatalog = DefaultPluginCatalog()
@@ -54,6 +54,7 @@ class Microkernel private constructor(
 
             Kernel.init(
                 eventBus,
+                logger,
                 MicrokernelLoggerFactory(logger),
                 ScopedLoggerSpy,
                 schedulerProvider,
@@ -84,12 +85,14 @@ class Microkernel private constructor(
                     kernelPluginConfig.paths.plugins.toFile(),
                 )
 
-            PluginStarter(
+            val pluginStarter = PluginStarter(
                 kernelPluginConfig,
                 pluginCatalog,
                 pluginLifecycleControl,
                 logger,
-            ).start(selectedPluginIds)
+            )
+
+            return { pluginStarter.start(selectedPluginIds) }
         }
     }
 }

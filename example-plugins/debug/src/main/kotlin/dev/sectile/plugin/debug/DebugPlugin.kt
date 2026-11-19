@@ -9,17 +9,15 @@ import dev.sectile.sdk.extension.scan
 import dev.sectile.sdk.extension.scope
 import dev.sectile.sdk.plugin.annotation.Plugin
 
-@Plugin(id = "sectiledebug", version = "1.0.0-ALPHA")
+@Plugin(id = "sectile-debug", version = "1.0.0-ALPHA")
 class DebugPlugin : BasePluginLifecycle() {
 
-    private val logger = this.logger()
-
     override fun load() {
-        logger.info("Loaded!")
+        logger().info("Loaded!")
     }
 
     override fun enable() {
-        logger.info("Enabled!")
+        logger().info("Enabled!")
 
         // Listeners registered through scope() are unsubscribed automatically.
         val eventbus = scope.eventbus()
@@ -28,18 +26,19 @@ class DebugPlugin : BasePluginLifecycle() {
             phase = ListenerPhase.MONITOR,
             priority = 255,
         ) {
-            logger.info("Received $it")
+            logger().info("Received $it")
         }
 
         scope.scan {
             provideWithHierarchy(this@DebugPlugin)
             listeners() // Uses the plugin's main package + ".listeners"
+            commands() // Uses the plugin's main package + ".commands"
             // Same as: listeners("dev.sectile.plugin.debug.listeners")
         }
 
         eventbus.publish("test")
 
         val config = loadConfig()
-        logger.info("Example config: test-string: ${config.testString} - duration: ${config.exampleDuration}")
+        logger().info("Example config: test-string: ${config.testString} - duration: ${config.exampleDuration}")
     }
 }

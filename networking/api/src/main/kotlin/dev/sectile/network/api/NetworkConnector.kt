@@ -45,14 +45,8 @@ class NetworkConnector private constructor(
          * stage machine and are extended through
          * [dev.sectile.network.api.player.stage.StageHooks].
          */
-        fun handlers(stage: ConnectionStage): PacketHandlerStorage {
-            require(stage == ConnectionStage.POST_LOGIN) {
-                "The handlers of the stage $stage are managed by the stage machine: use " +
-                    "StageHooks to extend the login instead."
-            }
-            return connector.stageStorages[stage]
-                ?: error("No packet handler storage registered for stage $stage")
-        }
+        fun handlers(stage: ConnectionStage): PacketHandlerStorage = connector.stageStorages[stage]
+            ?: error("No packet handler storage registered for stage $stage")
 
         /** Initializes the global [NetworkConnector] instance. */
         fun init(
@@ -64,6 +58,8 @@ class NetworkConnector private constructor(
             }
             ref = NetworkConnector(stageStorages, packetsSender)
         }
+
+        fun isInitialized(): Boolean = ref != null
 
         private val connector: NetworkConnector
             get() = ref ?: error("Network connector not initialized")

@@ -47,7 +47,7 @@ private fun loadSelection(section: ConfigSection): KernelPluginConfig.Selection 
     }
 
     return KernelPluginConfig.Selection(
-        section.getEnum("mode", KernelPluginConfig.Selection.Mode.ALL,),
+        section.getEnum("mode", KernelPluginConfig.Selection.Mode.ALL),
         plugins,
     )
 }
@@ -74,7 +74,7 @@ private fun loadLogging(
         .coerceAtLeast(1),
     startupBufferSection.getEnum(
         "overflow-strategy",
-        KernelPluginConfig.Logging.Strategy.DROP_NEWEST
+        KernelPluginConfig.Logging.Strategy.DROP_NEWEST,
     ),
 )
 

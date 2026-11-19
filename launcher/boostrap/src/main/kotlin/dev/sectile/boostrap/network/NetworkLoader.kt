@@ -5,9 +5,9 @@ import dev.sectile.kernel.config.ConfigSection
 import dev.sectile.kernel.config.ConfigService
 import dev.sectile.kernel.logger.Logger
 import dev.sectile.network.internal.NetworkInternalConnector
+import dev.sectile.network.internal.auth.ServerAuthenticator
 import dev.sectile.network.internal.config.AuthConfig
 import dev.sectile.network.internal.config.AuthMode
-import dev.sectile.network.internal.auth.ServerAuthenticator
 import dev.sectile.network.internal.config.NetworkConfig
 import dev.sectile.sdk.util.TimeFormatter
 import kotlin.math.max

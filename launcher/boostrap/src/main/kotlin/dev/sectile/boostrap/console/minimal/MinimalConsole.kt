@@ -1,10 +1,15 @@
 package dev.sectile.boostrap.console.minimal
 
 import dev.sectile.boostrap.console.Console
+import dev.sectile.engine.api.Engine
+import dev.sectile.engine.api.command.ConsoleCommandSender
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
-class MinimalConsole : Console {
+class MinimalConsole(
+    private val sender: ConsoleCommandSender,
+) : Console {
+    @Volatile
     private var run = true
 
     override fun run() {
@@ -12,10 +17,13 @@ class MinimalConsole : Console {
         while (run) {
             System.out.flush()
             val line = input.readLine()?.trim() ?: break // null = EOF (Ctrl+D / Ctrl+Z)
-            when {
-                line.isEmpty() -> continue
-                line == "stop" -> stop()
-                else -> println("Unknown command: $line")
+            if (line.isEmpty()) continue
+            if (Engine.isInitialized()) {
+                Engine.commands.execute(sender, line)
+            } else if (line == "stop") {
+                println("Shutting down...")
+                stop()
+                break
             }
         }
     }

@@ -26,7 +26,11 @@
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/build-logic" />
             <option value="$PROJECT_DIR$/engine" />
+            <option value="$PROJECT_DIR$/engine/api" />
             <option value="$PROJECT_DIR$/engine/chat" />
+            <option value="$PROJECT_DIR$/engine/command" />
+            <option value="$PROJECT_DIR$/engine/internal" />
+            <option value="$PROJECT_DIR$/engine/world" />
             <option value="$PROJECT_DIR$/example-plugins" />
             <option value="$PROJECT_DIR$/example-plugins/debug" />
             <option value="$PROJECT_DIR$/example-plugins/discord-hook" />

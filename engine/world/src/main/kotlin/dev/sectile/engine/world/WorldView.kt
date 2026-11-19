@@ -1,7 +1,6 @@
-package dev.sectile.network.internal.stages.prelogin.steps
+package dev.sectile.engine.world
 
-import dev.sectile.network.internal.stages.SpawnChunks
-import dev.sectile.network.internal.stages.StageContext
+import dev.sectile.engine.api.player.Player
 import dev.sectile.network.protocol.entities.EntityUpdate
 import dev.sectile.network.protocol.entities.EntityUpdatesPacket
 import dev.sectile.network.protocol.entities.MovementStatesComponentUpdate
@@ -23,6 +22,8 @@ import dev.sectile.network.protocol.structures.ModelTransform
 import dev.sectile.network.protocol.structures.MovementStates
 import dev.sectile.network.protocol.structures.Position
 import dev.sectile.network.protocol.world.ClearChunksPacket
+import dev.sectile.network.protocol.world.SetChunkPacket
+import dev.sectile.network.protocol.world.SetColumnPacket
 import dev.sectile.network.protocol.world.UpdatePostFxSettingsPacket
 import dev.sectile.network.protocol.world.UpdateSunSettingsPacket
 import dev.sectile.network.protocol.world.UpdateTimePacket
@@ -34,12 +35,12 @@ import java.time.Instant
 import java.util.UUID
 
 /**
- * Sends the state of the world and of the player.
+ * Sends the world to a player.
  *
- * The server does not have a world yet, so the client receives an empty one: the chunks around
- * the spawn point, the identity of the player and the settings of the void.
+ * The server does not have real chunks yet, so the world is an empty void: the settings, the
+ * identity of the player and the chunks around the spawn point.
  */
-internal object WorldStateStep {
+object WorldView {
 
     /** Number of updates per second the client receives. */
     private const val UPDATES_PER_SECOND = 20
@@ -50,6 +51,9 @@ internal object WorldStateStep {
     /** Radius of the view, in blocks. */
     private const val VIEW_RADIUS_BLOCKS = 1024
 
+    /** Radius, in chunks, of the spawn area. */
+    private const val SPAWN_CHUNK_RADIUS = 2
+
     /** Lowest section of the world. */
     private const val MIN_SECTION_Y = 0
 
@@ -59,9 +63,9 @@ internal object WorldStateStep {
     /** UUID of the world. */
     private val WORLD_UUID: UUID = UUID(0L, 0L)
 
-    /** Sends the world and the player state to the client. */
-    fun send(context: StageContext) {
-        val connection = context.connection
+    /** Sends the full initial world state and the spawn chunks. */
+    fun send(player: Player) {
+        val connection = player.connection
         val entityId = connection.session.entityId
 
         connection.sendPackets(
@@ -92,11 +96,20 @@ internal object WorldStateStep {
             RawMessagePacket(rawText = "test"),
         )
 
-        SpawnChunks.send(context)
+        sendSpawnChunks(player)
+    }
 
-        context.logger.info(
-            "[${connection.getIp()}] Player ${connection.session.username} joined the void (entity $entityId)",
-        )
+    /** Sends the empty chunks around the spawn point. */
+    private fun sendSpawnChunks(player: Player) {
+        val connection = player.connection
+        for (cx in -SPAWN_CHUNK_RADIUS..SPAWN_CHUNK_RADIUS) {
+            for (cz in -SPAWN_CHUNK_RADIUS..SPAWN_CHUNK_RADIUS) {
+                connection.sendPackets(
+                    SetColumnPacket(cx, cz),
+                    SetChunkPacket(cx, 0, cz),
+                )
+            }
+        }
     }
 
     /** Builds the update that places the player in the world. */

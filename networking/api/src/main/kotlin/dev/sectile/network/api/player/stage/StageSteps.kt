@@ -77,6 +77,9 @@ object StageSteps {
     /** PRE_LOGIN: moves to the gameplay stage and sends the state of the world. */
     const val PRE_LOGIN_SETUP_FINALIZE = "setup-finalize"
 
+    /** POST_LOGIN: entry point where the engine creates the player and joins a world. */
+    const val POST_LOGIN_WORLD_JOIN = "world-join"
+
     /** POST_LOGIN: answers the `ClientReady` packet of the client. */
     const val POST_LOGIN_CLIENT_READY = "client-ready"
 

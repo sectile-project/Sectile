@@ -1,8 +1,10 @@
 package dev.sectile.kernel
 
 import dev.sectile.kernel.event.EventBus
+import dev.sectile.kernel.logger.Logger
 import dev.sectile.kernel.logger.LoggerFactory
 import dev.sectile.kernel.logger.LoggerSpy
+import dev.sectile.kernel.logger.logger
 import dev.sectile.kernel.plugin.control.PluginLifecycleControl
 import dev.sectile.kernel.plugin.query.PluginCatalog
 import dev.sectile.kernel.plugin.scope.PluginScopeFactory
@@ -13,6 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class Kernel private constructor(
     val bus: EventBus,
+    val globalLogger: Logger,
     val loggerFactory: LoggerFactory,
     val loggerSpy: LoggerSpy,
     val schedulerProvider: SchedulerProvider,
@@ -31,6 +34,7 @@ class Kernel private constructor(
 
         val bus: EventBus get() = instance.bus
 
+        val globalLogger: Logger get() = instance.globalLogger
         val loggerFactory: LoggerFactory get() = instance.loggerFactory
         val loggerSpy: LoggerSpy get() = instance.loggerSpy
 
@@ -45,6 +49,7 @@ class Kernel private constructor(
 
         fun init(
             eventBus: EventBus,
+            globalLogger: Logger,
             loggerFactory: LoggerFactory,
             loggerSpy: LoggerSpy,
             schedulerProvider: SchedulerProvider,
@@ -59,6 +64,7 @@ class Kernel private constructor(
             ref =
                 Kernel(
                     eventBus,
+                    globalLogger,
                     loggerFactory,
                     loggerSpy,
                     schedulerProvider,

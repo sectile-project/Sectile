@@ -1,5 +1,6 @@
 plugins {
     id("sectile.module")
+    `java-library`
 }
 
 dependencies {
@@ -7,7 +8,7 @@ dependencies {
     val network = project(":networking:api")
     val protocol = project(":networking:protocol")
 
-    add("compileOnly", kernel)
-    add("compileOnly", network)
-    add("compileOnly", protocol)
+    add("compileOnlyApi", kernel)
+    add("compileOnlyApi", network)
+    add("compileOnlyApi", protocol)
 }

@@ -21,17 +21,32 @@ public class MicrokernelLoggerFactory extends SimpleLoggerFactory {
         return logger;
       }
 
-      final PluginClassLoader pluginClassLoader =
-          (PluginClassLoader) Thread.currentThread().getContextClassLoader();
-      return super.createLogger('[' + pluginClassLoader.getName() + ']');
+      final PluginClassLoader pluginClassLoader = resolvePluginClassLoader(owner);
+      if (pluginClassLoader != null) {
+        return super.createLogger('[' + pluginClassLoader.getName() + ']');
+      }
+      return super.acquire(owner);
     }
 
     if (owner instanceof PluginBoostrap) {
-      final PluginClassLoader pluginClassLoader =
-          (PluginClassLoader) Thread.currentThread().getContextClassLoader();
-      return super.createLogger('[' + pluginClassLoader.getName() + " - BOOTSTRAP]");
+      final PluginClassLoader pluginClassLoader = resolvePluginClassLoader(owner);
+      if (pluginClassLoader != null) {
+        return super.createLogger('[' + pluginClassLoader.getName() + " - BOOTSTRAP]");
+      }
+      return super.acquire(owner);
     }
 
     return super.acquire(owner);
+  }
+
+  private static PluginClassLoader resolvePluginClassLoader(final @NotNull Object owner) {
+    if (owner.getClass().getClassLoader() instanceof PluginClassLoader pluginClassLoader) {
+      return pluginClassLoader;
+    }
+    if (Thread.currentThread().getContextClassLoader()
+        instanceof PluginClassLoader pluginClassLoader) {
+      return pluginClassLoader;
+    }
+    return null;
   }
 }

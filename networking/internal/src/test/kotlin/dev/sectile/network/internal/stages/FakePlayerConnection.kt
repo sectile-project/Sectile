@@ -29,11 +29,6 @@ class FakePlayerConnection : PlayerConnection {
         override var entityId: Int = 0
         override var ready: Boolean = false
         override var viewRadiusChunks: Int = 6
-        override var positionX: Double = 0.0
-        override var positionY: Double = 0.0
-        override var positionZ: Double = 0.0
-        override var yaw: Float = 0f
-        override var pitch: Float = 0f
     }
 
     override var stage: ConnectionStage = ConnectionStage.HANDSHAKE
