@@ -62,6 +62,6 @@ Assets.zip
 HytaleServer/
 HytaleAssets/
 HytaleClient/
-Protocol/
+/Protocol/
 run
 scripts
