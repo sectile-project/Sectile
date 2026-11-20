@@ -4,7 +4,7 @@ plugins {
 
 dependencies {
     compileOnly(project(":kernel:api"))
-    implementation(project(":sdk:common"))
+    api(project(":sdk:common"))
 
     testImplementation(project(":kernel:api"))
 }
