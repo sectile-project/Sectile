@@ -1,7 +1,7 @@
 package dev.sectile.sdk.bundled.scanner
 
 import dev.sectile.kernel.logger.Logger
-import dev.sectile.sdk.bundled.scanner.injector.DependencyInjector
+import dev.sectile.sdk.scanner.DependencyInjector
 import dev.sectile.sdk.scanner.PackageScanner
 import dev.sectile.sdk.scanner.ScanResult
 import dev.sectile.sdk.scanner.registrar.ObjectRegistrar

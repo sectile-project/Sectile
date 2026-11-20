@@ -226,6 +226,7 @@ public final class StringParser {
     int blockIndent = -1;
     int pendingNewlines = 0;
     boolean hasContent = false;
+    boolean prevSpaced = false; // previous content line was "more indented" (folded style)
 
     while (r.pos < end) {
       final int savedPos = r.pos;
@@ -264,21 +265,24 @@ public final class StringParser {
         break;
       }
 
+      // In folded style, "spaced" lines (more indented, or starting with a tab) are never folded:
+      // the line breaks around them are preserved.
+      final boolean spaced = lineIndent > blockIndent || buf[p] == '\t';
+
       if (hasContent) {
-        if (!folded) {
-          sb.repeat("\n", Math.max(0, pendingNewlines + 1));
+        if (!folded || spaced || prevSpaced) {
+          sb.repeat("\n", pendingNewlines + 1);
+        } else if (pendingNewlines == 0) {
+          sb.append(' ');
         } else {
-          if (pendingNewlines == 0 && lineIndent == blockIndent) {
-            sb.append(' ');
-          } else {
-            sb.repeat("\n", Math.max(0, pendingNewlines));
-          }
+          sb.repeat("\n", pendingNewlines);
         }
       } else {
-        sb.repeat("\n", Math.max(0, pendingNewlines));
+        sb.repeat("\n", pendingNewlines);
       }
       pendingNewlines = 0;
       hasContent = true;
+      prevSpaced = spaced;
 
       sb.repeat(" ", Math.max(0, lineIndent - blockIndent));
 

@@ -5,10 +5,7 @@ import dev.sectile.kernel.config.section.MapConfigSection;
 import dev.sectile.sdk.bundled.config.ByteReader;
 import dev.sectile.sdk.bundled.config.NumberParser;
 import dev.sectile.sdk.bundled.config.StringDecodeUtil;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public final class JsonParser {
 
@@ -16,38 +13,33 @@ public final class JsonParser {
 
   private final ByteReader reader = new ByteReader();
 
-  public ConfigSection parseObject(final byte[] buf) {
-    return parseObject(buf, 0, buf.length);
-  }
-
   public ConfigSection parseObject(final byte[] buf, final int offset, final int length) {
     final ByteReader r = this.reader;
     r.reset(buf, offset, length);
     r.skipJsonWhitespace();
-    if (r.pos >= r.end || r.buf[r.pos] != '{') {
-      throw r.error("expected '{' at the beginning of JSON");
-    }
-    final ConfigSection result = readObject(r, new LinkedHashMap<>(), 0);
-    r.skipJsonWhitespace();
-    if (r.pos < r.end) {
-      throw r.error("unexpected content after JSON closure");
-    }
-    return result;
-  }
 
-  public Object parse(final byte[] buf) {
-    final ByteReader r = this.reader;
-    r.reset(buf, 0, buf.length);
-    r.skipJsonWhitespace();
     if (r.pos >= r.end) {
       throw r.error("empty JSON");
     }
+
     final Object value = readValue(r, 0);
+
     r.skipJsonWhitespace();
     if (r.pos < r.end) {
-      throw r.error("unexpected content at the end of JSON");
+      throw r.error("unexpected content after the root value");
     }
-    return value;
+
+    if (value instanceof ConfigSection) {
+      return (ConfigSection) value;
+    }
+
+    if (value instanceof Collection<?>) {
+      final MapConfigSection mapConfigSection = new MapConfigSection(new LinkedHashMap<>(1));
+      mapConfigSection.set("", value); // root element
+      return mapConfigSection;
+    }
+
+    throw r.error("the JSON root must be an object or an array");
   }
 
   private static Object readValue(final ByteReader r, final int depth) {

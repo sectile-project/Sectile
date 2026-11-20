@@ -9,6 +9,7 @@ import java.util.Map;
 public final class StructureParser {
 
   private static final int MAX_DEPTH = 32;
+  private static final int MAX_FLOW_DEPTH = 512;
 
   private final int[] indents = new int[MAX_DEPTH];
   private final Object[] containers = new Object[MAX_DEPTH];
@@ -146,7 +147,20 @@ public final class StructureParser {
     }
   }
 
+  private static void enterFlow(final YamlReader r) {
+    if (++r.flowDepth > MAX_FLOW_DEPTH) {
+      throw r.error("maximum flow nesting depth exceeded (" + MAX_FLOW_DEPTH + ")");
+    }
+  }
+
   public static ConfigSection readFlowMap(final YamlReader r, final ConfigSection map) {
+    enterFlow(r);
+    final ConfigSection result = readFlowMapBody(r, map);
+    r.flowDepth--;
+    return result;
+  }
+
+  private static ConfigSection readFlowMapBody(final YamlReader r, final ConfigSection map) {
     final byte[] buf = r.buf;
     final int end = r.end;
     r.pos++; // Consume '{'
@@ -186,6 +200,13 @@ public final class StructureParser {
   }
 
   public static List<Object> readFlowList(final YamlReader r) {
+    enterFlow(r);
+    final List<Object> result = readFlowListBody(r);
+    r.flowDepth--;
+    return result;
+  }
+
+  private static List<Object> readFlowListBody(final YamlReader r) {
     final byte[] buf = r.buf;
     final int end = r.end;
     r.pos++; // Consume '['
@@ -239,22 +260,39 @@ public final class StructureParser {
     final byte first = buf[i];
     if (first == '[' || first == '{') return false;
 
+    // Must follow the same rules as the real readers: backslash escapes in double quotes,
+    // '' escapes in single quotes.
     if (first == '"' || first == '\'') {
       i++;
       while (i < end) {
         final byte b = buf[i];
-        if (b == first || b == '\n' || b == '\r') break;
-        if (b == '\\') i++;
+        if (b == '\n' || b == '\r') return false;
+        if (first == '"' && b == '\\') {
+          i += 2;
+          continue;
+        }
+        if (b == first) {
+          if (first == '\'' && i + 1 < end && buf[i + 1] == '\'') {
+            i += 2;
+            continue;
+          }
+          break;
+        }
         i++;
       }
-      do i++;
-      while (i < end && buf[i] == ' ');
+      if (i >= end) return false;
+      i++; // closing quote
+      while (i < end && buf[i] == ' ') {
+        i++;
+      }
       return i < end && buf[i] == ':';
     }
 
     while (i < end) {
       final byte b = buf[i];
-      if (b == '\n' || b == '\r' || b == '#') break;
+      if (b == '\n' || b == '\r') break;
+      // '#' only starts a comment when preceded by a space (same rule as ScalarParser)
+      if (b == '#' && i > 0 && buf[i - 1] == ' ') break;
       if (b == ':') {
         if (i + 1 >= end) return true;
         final byte next = buf[i + 1];

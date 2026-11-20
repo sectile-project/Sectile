@@ -15,10 +15,6 @@ public class ByteReader {
   public static final int INT_TRUE = 0x65757274; // "true" in LE
   public static final int INT_FALS = 0x736C6166; // "fals" in LE
 
-  // RFC 8259 whitespace bitmask: ' ' (0x20), '\t' (0x09), '\n' (0x0A), '\r' (0x0D)
-  public static final long JSON_SPACE_MASK =
-      (1L << ' ') | (1L << '\t') | (1L << '\n') | (1L << '\r');
-
   public byte[] buf;
   public int pos;
   public int end;

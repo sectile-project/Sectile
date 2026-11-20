@@ -116,10 +116,21 @@ public final class ScalarParser {
     return StringDecodeUtil.decodeSlice(b, start, end);
   }
 
-  private static void consumeTrailingCommentOrSpace(final YamlReader r) {
+  /**
+   * Consumes spaces and an optional trailing comment, then requires the end of the line. Anything
+   * else after a complete value (e.g. {@code key: "abc" def}) is an error.
+   */
+  static void consumeTrailingCommentOrSpace(final YamlReader r) {
     r.skipInlineSpaces();
     if (r.pos < r.end && r.buf[r.pos] == '#') {
+      // A comment needs whitespace (or the line start) before the '#'
+      if (r.pos > 0 && r.buf[r.pos - 1] != ' ') {
+        throw r.error("a comment must be separated from the value by a space");
+      }
       r.pos = ByteReader.indexOfNewline(r.buf, r.pos + 1, r.end);
+    }
+    if (r.pos < r.end && !r.isLineEnd(r.buf[r.pos])) {
+      throw r.error("unexpected content after the value");
     }
   }
 }

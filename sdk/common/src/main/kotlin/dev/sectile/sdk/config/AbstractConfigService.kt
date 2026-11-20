@@ -1,4 +1,4 @@
-package dev.sectile.sdk.bundled.config
+package dev.sectile.sdk.config
 
 import dev.sectile.kernel.Kernel
 import dev.sectile.kernel.config.ConfigSection

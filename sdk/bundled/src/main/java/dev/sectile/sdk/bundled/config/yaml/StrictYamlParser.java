@@ -67,6 +67,7 @@ public final class StrictYamlParser {
       }
       if (first == '{' && !structures.hasPending()) {
         StructureParser.readFlowMap(r, root);
+        ScalarParser.consumeTrailingCommentOrSpace(r);
         r.skipToNextLine();
         return;
       }

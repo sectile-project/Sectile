@@ -4,6 +4,15 @@ import dev.sectile.sdk.bundled.config.ByteReader;
 
 public final class YamlReader extends ByteReader {
 
+  /** Current nesting depth of flow collections ({@code {}} / {@code []}). */
+  public int flowDepth;
+
+  @Override
+  public void reset(final byte[] buf, final int offset, final int length) {
+    super.reset(buf, offset, length);
+    this.flowDepth = 0;
+  }
+
   public YamlReader() {
     super();
   }

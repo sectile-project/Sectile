@@ -1,4 +1,4 @@
-package dev.sectile.sdk.bundled.scanner.injector
+package dev.sectile.sdk.scanner
 
 import java.lang.reflect.Constructor
 import java.util.*

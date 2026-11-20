@@ -1,10 +1,20 @@
 package dev.sectile.sdk.bundled.config;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+
 public final class NumberParser {
 
   private static final double[] POW10 = new double[309];
   private static final long[] LONG_POW10 = new long[19];
   public static final byte[] HEX_DIGITS = new byte[128];
+
+  /** Every integer up to 2^53 is exactly representable as a double. */
+  private static final long MAX_EXACT_MANTISSA = 1L << 53;
+
+  /** 10^22 is the largest power of ten exactly representable as a double. */
+  private static final int MAX_EXACT_POW10 = 22;
 
   static {
     for (int i = 0; i < POW10.length; i++) {
@@ -34,34 +44,35 @@ public final class NumberParser {
   }
 
   /**
-   * Zero-allocation IEEE 754 double conversion from negative-accumulated mantissa and decimal
-   * scale. scale = fractionalDigits - exponent
+   * Correctly rounded IEEE 754 conversion of {@code -negMantissa * 10^-scale} (sign applied by
+   * {@code negative}). The mantissa must be exact (no dropped digits).
+   *
+   * <p>Fast path (Clinger): when the mantissa is at most 2^53 and |scale| is at most 22, both
+   * operands are exact doubles and a single multiplication or division is correctly rounded.
+   * Everything else goes through {@link BigDecimal}, which is also correctly rounded (including
+   * subnormals and overflow to infinity).
    */
   public static double toDouble(final long negMantissa, final int scale, final boolean negative) {
     if (negMantissa == 0) {
       return negative ? -0.0 : 0.0;
     }
-    double v = negative ? (double) negMantissa : -(double) negMantissa;
-    if (scale == 0) {
-      return v;
-    }
-    if (scale < 0) {
-      final int exp = -scale;
-      if (exp > 308) {
-        return negative ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
+    if (negMantissa != Long.MIN_VALUE && scale >= -MAX_EXACT_POW10 && scale <= MAX_EXACT_POW10) {
+      final long mag = -negMantissa;
+      if (mag <= MAX_EXACT_MANTISSA) {
+        final double v = (double) mag;
+        final double r = scale == 0 ? v : (scale < 0 ? v * POW10[-scale] : v / POW10[scale]);
+        return negative ? -r : r;
       }
-      return v * POW10[exp];
-    } else {
-      if (scale > 308) {
-        // Handle subnormal range (1e-309 .. 1e-324) in two steps without String allocation
-        final int rem = scale - 308;
-        if (rem >= POW10.length) {
-          return negative ? -0.0 : 0.0;
-        }
-        return (v / POW10[308]) / POW10[rem];
-      }
-      return v / POW10[scale];
     }
+    final double d = BigDecimal.valueOf(negMantissa, scale).doubleValue();
+    return negative ? d : -d;
+  }
+
+  /** Same as {@link #toDouble(long, int, boolean)} but taking a non-negative mantissa. */
+  @Deprecated
+  public static double toDoublePositive(
+      final long mantissa, final int scale, final boolean negative) {
+    return toDouble(-mantissa, scale, negative);
   }
 
   public static Number toCompactInteger(final long negMantissa, final boolean negative) {
@@ -79,17 +90,18 @@ public final class NumberParser {
     }
   }
 
-  // JSON Strict Number Parser (RFC 8259) - Zero String Allocation
+  // JSON Strict Number Parser (RFC 8259)
   public static Number readJsonNumber(final ByteReader r) {
     final byte[] buf = r.buf;
     final int end = r.end;
-    int p = r.pos;
+    final int numStart = r.pos;
+    int p = numStart;
 
     boolean negative = false;
     byte b = buf[p];
     if (b == '-') {
       negative = true;
-      if (++p >= end) throw r.error("número JSON incompleto");
+      if (++p >= end) throw r.error("incomplete JSON number");
       b = buf[p];
     }
 
@@ -118,7 +130,7 @@ public final class NumberParser {
       }
     } else {
       r.pos = p;
-      throw r.error("número JSON inválido");
+      throw r.error("invalid JSON number");
     }
 
     final int intStart = p;
@@ -128,7 +140,7 @@ public final class NumberParser {
     if (firstDigit == 0) {
       if (p < end && buf[p] >= '0' && buf[p] <= '9') {
         r.pos = p;
-        throw r.error("no se permiten ceros a la izquierda en JSON");
+        throw r.error("leading zeros are not allowed in JSON numbers");
       }
     } else {
       // Unchecked fast loop for up to 18 digits (cannot overflow 64-bit positive long!)
@@ -157,42 +169,40 @@ public final class NumberParser {
       return signed;
     }
 
-    return readJsonFloatOrBigInt(r, buf, p, end, mantissa, p - intStart, negative);
+    return readJsonFloatOrBigInt(r, buf, p, end, mantissa, numStart, intStart, negative);
   }
 
+  /**
+   * Slow path: floats, and integers with 19+ digits. {@code mantissa} holds the integer digits
+   * consumed so far (at most 18, all exact).
+   */
   private static Number readJsonFloatOrBigInt(
       final ByteReader r,
       final byte[] buf,
       int p,
       final int end,
       long mantissa,
-      int digitsRead,
+      final int numStart,
+      final int intStart,
       final boolean negative) {
 
     boolean isFloat = false;
-    int scale = 0;
+    boolean truncated = false; // a non-zero significant digit was dropped: mantissa is inexact
+    int scale = 0; // value = mantissa * 10^-scale
+    // Significant digits held by mantissa (leading zeros do not count).
+    int sig = mantissa == 0 ? 0 : p - intStart;
 
-    // Rare case: integer part has > 18 digits
-    while (p < end && buf[p] >= '0' && buf[p] <= '9') {
-      final int d = buf[p++] - '0';
-      if (digitsRead < 18) {
+    // Remaining integer digits (19+ digit integers)
+    while (p < end) {
+      final int d = buf[p] - '0';
+      if (d < 0 || d > 9) break;
+      p++;
+      if (sig < 18) {
         mantissa = mantissa * 10 + d;
-        digitsRead++;
-      } else if (digitsRead == 18) {
-        // Check 19th digit for exact Long.MIN_VALUE / Long.MAX_VALUE
-        if (Long.compareUnsigned(
-                    mantissa * 10 + d, negative ? 0x8000000000000000L : 0x7FFFFFFFFFFFFFFFL)
-                <= 0
-            && mantissa <= 922337203685477580L) {
-          mantissa = mantissa * 10 + d;
-          digitsRead++;
-        } else {
-          isFloat = true;
-          scale--;
-        }
+        sig++;
       } else {
-        isFloat = true;
         scale--;
+        if (d != 0) truncated = true;
       }
     }
 
@@ -202,23 +212,30 @@ public final class NumberParser {
       p++;
       if (p >= end || buf[p] < '0' || buf[p] > '9') {
         r.pos = p;
-        throw r.error("se esperaba al menos un dígito después de '.'");
+        throw r.error("expected at least one digit after '.'");
       }
-      // Fast unchecked 2-digit loop while total significant digits <= 18
-      int safeFracEnd = Math.min(end - 1, p + (17 - digitsRead));
-      int d2;
-      while (p < safeFracEnd && (d2 = digit2(buf, p)) != -1) {
-        mantissa = mantissa * 100 + d2;
-        p += 2;
-        scale += 2;
-        digitsRead += 2;
-      }
-      while (p < end && buf[p] >= '0' && buf[p] <= '9') {
-        final int d = buf[p++] - '0';
-        if (digitsRead < 18) {
+      while (p < end) {
+        // 2-digit step, only once the mantissa is non-zero so that leading zeros of the
+        // fraction (0.000123) do not eat the significant-digit budget.
+        if (mantissa != 0 && sig <= 16 && p + 1 < end) {
+          final int d2 = digit2(buf, p);
+          if (d2 != -1) {
+            mantissa = mantissa * 100 + d2;
+            p += 2;
+            scale += 2;
+            sig += 2;
+            continue;
+          }
+        }
+        final int d = buf[p] - '0';
+        if (d < 0 || d > 9) break;
+        p++;
+        if (sig < 18) {
           mantissa = mantissa * 10 + d;
           scale++;
-          digitsRead++;
+          if (mantissa != 0) sig++;
+        } else if (d != 0) {
+          truncated = true;
         }
       }
     }
@@ -234,7 +251,7 @@ public final class NumberParser {
       }
       if (p >= end || buf[p] < '0' || buf[p] > '9') {
         r.pos = p;
-        throw r.error("exponente inválido en número JSON");
+        throw r.error("invalid exponent in JSON number");
       }
       int exp = 0;
       while (p < end && buf[p] >= '0' && buf[p] <= '9') {
@@ -249,39 +266,30 @@ public final class NumberParser {
     r.pos = p;
 
     if (!isFloat) {
-      return negative ? -mantissa : mantissa;
+      // Only reachable with 19+ digits: does not fit the 18-digit fast path.
+      return parseLargeInteger(buf, numStart, p);
     }
-    final double d = toDoublePositive(mantissa, scale, negative);
+    if (mantissa == 0) {
+      return negative ? -0.0 : 0.0;
+    }
+    final double d =
+        truncated
+            ? Double.parseDouble(
+                new String(buf, numStart, p - numStart, StandardCharsets.ISO_8859_1))
+            : toDouble(-mantissa, scale, negative);
     if (Double.isInfinite(d) || Double.isNaN(d)) {
-      throw r.error("número JSON fuera de rango");
+      throw r.error("JSON number out of range");
     }
     return d;
   }
 
-  public static double toDoublePositive(
-      final long mantissa, final int scale, final boolean negative) {
-    if (mantissa == 0) {
-      return negative ? -0.0 : 0.0;
-    }
-    final double v = negative ? -(double) mantissa : (double) mantissa;
-    if (scale == 0) {
-      return v;
-    }
-    if (scale < 0) {
-      final int exp = -scale;
-      if (exp > 308) {
-        return negative ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
-      }
-      return v * POW10[exp];
-    } else {
-      if (scale > 308) {
-        final int rem = scale - 308;
-        if (rem >= POW10.length) {
-          return negative ? -0.0 : 0.0;
-        }
-        return (v / POW10[308]) / POW10[rem];
-      }
-      return v / POW10[scale];
+  /** Integer with 19+ digits: Long when it fits, BigInteger otherwise. */
+  private static Number parseLargeInteger(final byte[] buf, final int start, final int end) {
+    final String s = new String(buf, start, end - start, StandardCharsets.ISO_8859_1);
+    try {
+      return Long.parseLong(s);
+    } catch (NumberFormatException e) {
+      return new BigInteger(s);
     }
   }
 
@@ -304,9 +312,9 @@ public final class NumberParser {
 
     if (buf[i] == '0' && i + 1 < end) {
       final byte prefix = (byte) (buf[i + 1] | 0x20);
-      if (prefix == 'x') return parseHex(buf, i + 2, end, negative);
-      if (prefix == 'b') return parseBinary(buf, i + 2, end, negative);
-      if (prefix == 'o') return parseOctal(buf, i + 2, end, negative);
+      if (prefix == 'x') return parseRadix(buf, i + 2, end, negative, 4);
+      if (prefix == 'b') return parseRadix(buf, i + 2, end, negative, 1);
+      if (prefix == 'o') return parseRadix(buf, i + 2, end, negative, 3);
     }
 
     return parseYamlDecimal(buf, i, end, negative);
@@ -316,12 +324,15 @@ public final class NumberParser {
       final byte[] buf, final int start, final int end, final boolean negative) {
     if (buf[start] == '_' || buf[end - 1] == '_') return null;
 
+    final int lastDigit = negative ? 8 : 7; // Long.MIN_VALUE ends in 8, Long.MAX_VALUE in 7
     long negMantissa = 0;
     int i = start;
 
     int d2;
     while (i + 1 < end && (d2 = digit2(buf, i)) != -1) {
-      if (negMantissa >= Long.MIN_VALUE / 100) {
+      // negMantissa * 100 - d2 must not underflow Long.MIN_VALUE
+      if (negMantissa > Long.MIN_VALUE / 100
+          || (negMantissa == Long.MIN_VALUE / 100 && d2 <= lastDigit)) {
         negMantissa = negMantissa * 100 - d2;
         i += 2;
       } else {
@@ -343,7 +354,7 @@ public final class NumberParser {
         hasDigits = true;
         if (!mantissaFull) {
           if (negMantissa > Long.MIN_VALUE / 10
-              || (negMantissa == Long.MIN_VALUE / 10 && digit <= (negative ? 8 : 7))) {
+              || (negMantissa == Long.MIN_VALUE / 10 && digit <= lastDigit)) {
             negMantissa = negMantissa * 10 - digit;
             if (hasDot) scale++;
           } else {
@@ -359,7 +370,7 @@ public final class NumberParser {
       } else if (b == 'e' || b == 'E') {
         if (!hasDigits) return null;
         return parseYamlScientific(
-            buf, i + 1, end, negMantissa, scale, hasDot, mantissaFull, negative);
+            buf, start, i + 1, end, negMantissa, scale, hasDot, mantissaFull, negative);
       } else {
         return null;
       }
@@ -367,7 +378,13 @@ public final class NumberParser {
 
     if (!hasDigits) return null;
 
-    if (hasDot || mantissaFull) {
+    if (mantissaFull) {
+      // Digits were dropped: the mantissa is inexact, so go through the original text.
+      return hasDot
+          ? (Number) slowDouble(buf, start, end, negative)
+          : slowInteger(buf, start, end, negative);
+    }
+    if (hasDot) {
       return toDouble(negMantissa, scale, negative);
     }
     return toCompactInteger(negMantissa, negative);
@@ -375,6 +392,7 @@ public final class NumberParser {
 
   private static Number parseYamlScientific(
       final byte[] buf,
+      final int numStart,
       int i,
       final int end,
       final long negMantissa,
@@ -420,60 +438,75 @@ public final class NumberParser {
       }
     }
 
+    if (mantissaFull) {
+      return slowDouble(buf, numStart, end, negative);
+    }
+
     final int totalScale = baseScale + (expNegative ? exp : -exp);
     return toDouble(negMantissa, totalScale, negative);
   }
 
-  private static Number parseHex(
+  /** Parses the original text (digits, '.', 'e', sign; '_' removed) with the JDK parser. */
+  private static double slowDouble(
       final byte[] buf, final int start, final int end, final boolean negative) {
+    final StringBuilder sb = new StringBuilder(end - start + 1);
+    if (negative) sb.append('-');
+    for (int i = start; i < end; i++) {
+      if (buf[i] != '_') sb.append((char) buf[i]);
+    }
+    return Double.parseDouble(sb.toString());
+  }
+
+  /** Integer that does not fit in a long (digits and '_' only). */
+  private static Number slowInteger(
+      final byte[] buf, final int start, final int end, final boolean negative) {
+    final StringBuilder sb = new StringBuilder(end - start + 1);
+    if (negative) sb.append('-');
+    for (int i = start; i < end; i++) {
+      if (buf[i] != '_') sb.append((char) buf[i]);
+    }
+    return new BigInteger(sb.toString());
+  }
+
+  /**
+   * Parses 0x / 0b / 0o digits. {@code shift} is bits per digit (4, 1, 3). Returns Integer or Long
+   * when the value fits a signed long, BigInteger when it does not, null when malformed.
+   */
+  private static Number parseRadix(
+      final byte[] buf, final int start, final int end, final boolean negative, final int shift) {
     if (start >= end || buf[start] == '_' || buf[end - 1] == '_') return null;
+    final int radix = 1 << shift;
     long value = 0;
+    boolean overflow = false;
     boolean hasDigits = false;
     for (int i = start; i < end; i++) {
       final byte b = buf[i];
       if (b == '_') continue;
-      final int digit = (b >= 0) ? HEX_DIGITS[b] : -1;
+      final int digit;
+      if (shift == 4) {
+        digit = (b >= 0) ? HEX_DIGITS[b] : -1;
+      } else {
+        final int d = b - '0';
+        digit = (d >= 0 && d < radix) ? d : -1;
+      }
       if (digit < 0) return null;
       hasDigits = true;
-      value = (value << 4) | digit;
+      // The top `shift` bits must be zero, otherwise the shift would lose information
+      if ((value >>> (64 - shift)) != 0) overflow = true;
+      value = (value << shift) | digit;
     }
-    return hasDigits ? toCompactInteger(-value, negative) : null;
-  }
+    if (!hasDigits) return null;
 
-  private static Number parseBinary(
-      final byte[] buf, final int start, final int end, final boolean negative) {
-    if (start >= end || buf[start] == '_' || buf[end - 1] == '_') return null;
-    long value = 0;
-    boolean hasDigits = false;
-    for (int i = start; i < end; i++) {
-      final byte b = buf[i];
-      if (b == '_') continue;
-      if (b == '0' || b == '1') {
-        hasDigits = true;
-        value = (value << 1) | (b - '0');
-      } else {
-        return null;
-      }
+    // Fits a signed long: value in [0, 2^63-1], or exactly 2^63 when negative
+    if (!overflow && (value >= 0 || (negative && value == Long.MIN_VALUE))) {
+      return toCompactInteger(-value, negative);
     }
-    return hasDigits ? toCompactInteger(-value, negative) : null;
-  }
 
-  private static Number parseOctal(
-      final byte[] buf, final int start, final int end, final boolean negative) {
-    if (start >= end || buf[start] == '_' || buf[end - 1] == '_') return null;
-    long value = 0;
-    boolean hasDigits = false;
+    final StringBuilder sb = new StringBuilder(end - start + 1);
     for (int i = start; i < end; i++) {
-      final byte b = buf[i];
-      if (b == '_') continue;
-      final int digit = b - '0';
-      if (digit >= 0 && digit <= 7) {
-        hasDigits = true;
-        value = (value << 3) | digit;
-      } else {
-        return null;
-      }
+      if (buf[i] != '_') sb.append((char) buf[i]);
     }
-    return hasDigits ? toCompactInteger(-value, negative) : null;
+    final BigInteger big = new BigInteger(sb.toString(), radix);
+    return negative ? big.negate() : big;
   }
 }
