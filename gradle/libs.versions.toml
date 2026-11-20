@@ -8,9 +8,7 @@ junit = "6.1.3"
 
 netty = "4.2.18.Final"
 
-bouncycastle = "1.85"
 zstd-jni = "1.5.7-16"
-snakeyaml = "3.1.1"
 jline = "4.4.1"
 
 spotless = "8.10.2"
@@ -30,9 +28,7 @@ netty-transport-native-epoll = { module = "io.netty:netty-transport-native-epoll
 netty-transport-native-kqueue = { module = "io.netty:netty-transport-native-kqueue", version.ref = "netty" }
 netty-codec-quic = { module = "io.netty:netty-codec-native-quic", version.ref = "netty" }
 
-bouncycastle-pkix = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncycastle" }
 zstd-jni = { module = "com.github.luben:zstd-jni", version.ref = "zstd-jni" }
-snakeyaml-engine = { module = "org.snakeyaml:snakeyaml-engine", version.ref = "snakeyaml" }
 
 jline-terminal = { module = "org.jline:jline-terminal", version.ref = "jline" }
 jline-reader = { module = "org.jline:jline-reader", version.ref = "jline" }
