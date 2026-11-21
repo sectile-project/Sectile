@@ -1,3 +1,6 @@
+![banner](banner-dark.png#gh-dark-mode-only)
+![banner](banner-light.png#gh-light-mode-only)
+
 # Sectile
 [![License](https://img.shields.io/badge/License-Apache_2.0-F3CB09?style=for-the-badge)](LICENSE)
 ![Status](https://img.shields.io/badge/status-minimal_playable-2ea44f?style=for-the-badge)
