@@ -8,6 +8,7 @@ import dev.sectile.kernel.logger.LoggerSpy
 import dev.sectile.kernel.plugin.scope.PluginScope
 import dev.sectile.kernel.plugin.spi.lifecycle.PluginLifecycle
 import dev.sectile.kernel.scheduler.Scheduler
+import dev.sectile.kernel.service.ServiceRegistry
 import dev.sectile.network.api.packet.handler.PacketHandlerRegistry
 import dev.sectile.network.api.player.stage.StageHookRegistry
 import dev.sectile.sdk.scanner.PackageScanner
@@ -17,6 +18,8 @@ import java.util.concurrent.ExecutorService
 fun PluginScope.eventbus(): EventBus = this[EventBus::class.java] ?: throw IllegalStateException("EventBus not found in the current PluginScope")
 
 fun PluginScope.commands(): CommandRegistry = this[CommandRegistry::class.java] ?: throw IllegalStateException("CommandRegistry not found in the current PluginScope")
+
+fun PluginScope.services(): ServiceRegistry = this[ServiceRegistry::class.java] ?: throw IllegalStateException("ServiceRegistry not found in the current PluginScope")
 
 fun PluginScope.createScanner(): PackageScanner = this[PackageScanner::class.java] ?: throw IllegalStateException("PackageScanner not found in the current PluginScope")
 

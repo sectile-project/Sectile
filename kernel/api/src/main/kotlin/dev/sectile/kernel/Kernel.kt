@@ -8,6 +8,7 @@ import dev.sectile.kernel.plugin.control.PluginLifecycleControl
 import dev.sectile.kernel.plugin.query.PluginCatalog
 import dev.sectile.kernel.plugin.scope.PluginScopeFactory
 import dev.sectile.kernel.scheduler.SchedulerProvider
+import dev.sectile.kernel.service.ServiceCatalog
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
@@ -22,6 +23,7 @@ class Kernel private constructor(
     val pluginCatalog: PluginCatalog,
     val pluginLifecycleControl: PluginLifecycleControl,
     val pluginScopeFactory: PluginScopeFactory,
+    val services: ServiceCatalog,
     internal val basePluginDirectory: Path,
     internal val baseLibraryDirectory: Path,
 ) {
@@ -44,6 +46,7 @@ class Kernel private constructor(
         val pluginCatalog: PluginCatalog get() = instance.pluginCatalog
         val pluginLifecycleControl: PluginLifecycleControl get() = instance.pluginLifecycleControl
         val pluginScopeFactory: PluginScopeFactory get() = instance.pluginScopeFactory
+        val services: ServiceCatalog get() = instance.services
 
         val pluginDirectory: Path get() = instance.basePluginDirectory
         val libraryDirectory: Path get() = instance.baseLibraryDirectory
@@ -57,6 +60,7 @@ class Kernel private constructor(
             pluginCatalog: PluginCatalog,
             pluginLifecycleControl: PluginLifecycleControl,
             pluginScopeFactory: PluginScopeFactory,
+            services: ServiceCatalog,
             basePluginDirectory: Path,
             baseLibraryDirectory: Path,
         ) {
@@ -72,6 +76,7 @@ class Kernel private constructor(
                     pluginCatalog,
                     pluginLifecycleControl,
                     pluginScopeFactory,
+                    services,
                     basePluginDirectory,
                     baseLibraryDirectory,
                 )

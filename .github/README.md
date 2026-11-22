@@ -17,8 +17,12 @@ Even people who don't know how to program can add plugins to extend it.
 - **Fast Startup:** Boots in less than 500ms, making it ideal for ephemeral instances, lobbies, and minigame networks.
 - **Joinable World:** Handles the full connection lifecycle (`HANDSHAKE` → `AUTHENTICATION` / `INSECURE_OPTIONS` → `PRE_LOGIN` → `POST_LOGIN`), spawning players into an empty void world with chunk streaming, position updates, and keep-alive ping/tick loops.
 - **Isolated Microkernel:** Kernel details are hidden behind clean public APIs. Plugins run with strict classloader isolation so they can't break each other or the engine.
+- **Hot-reload:** Design to reload and disable plugins without stopping the server
 - **Developer experience first:** Designed to avoid rewriting the same files and to make things easier for the developer. No need to break anything internal (like NMS)
 - **Clean Apache 2.0 License:** Pure clean-room protocol implementation focused on interoperability. No corporate NDAs, no competition bans, no closed gardens.
+
+> [!NOTE]
+> You can found documentation here: https://www.sectile.dev
 
 > [!WARNING]
 > Not an Official Product: this is an independent, community-driven project and is not affiliated with, endorsed by, or produced by Hypixel > Studios Canada Inc.

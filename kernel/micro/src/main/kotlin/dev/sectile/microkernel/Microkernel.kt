@@ -6,6 +6,7 @@ import dev.sectile.kernel.logger.Logger
 import dev.sectile.kernel.plugin.scope.provider.ProtectedLazyProvider
 import dev.sectile.kernel.scheduler.Scheduler
 import dev.sectile.kernel.scheduler.SchedulerProvider
+import dev.sectile.kernel.service.ServiceRegistry
 import dev.sectile.microkernel.config.KernelPluginConfig
 import dev.sectile.microkernel.event.bus.DefaultEventBus
 import dev.sectile.microkernel.logger.MicrokernelLoggerFactory
@@ -21,8 +22,10 @@ import dev.sectile.microkernel.plugin.scope.KernelPluginScopeFactory
 import dev.sectile.microkernel.plugin.scope.provider.ScopedEventBusProvider
 import dev.sectile.microkernel.plugin.scope.provider.ScopedExecutorProvider
 import dev.sectile.microkernel.plugin.scope.provider.ScopedLoggerSpy
+import dev.sectile.microkernel.plugin.scope.provider.ScopedServiceRegistryProvider
 import dev.sectile.microkernel.plugin.validation.PluginDependencyValidator
 import dev.sectile.microkernel.scheduler.KernelSchedulerProvider
+import dev.sectile.microkernel.service.DefaultServiceRegistry
 
 class Microkernel private constructor(
     val pluginConfig: KernelPluginConfig,
@@ -45,6 +48,7 @@ class Microkernel private constructor(
             check(ref == null) { "Microkernel already initialized." }
 
             val pluginCatalog = DefaultPluginCatalog()
+            val serviceRegistry = DefaultServiceRegistry()
             val libraryResolver = PluginLibraryResolver(LibraryPathResolver(kernelPluginConfig.paths.libraries))
             val scanner = PluginScanner(PluginPropertiesReader(), logger)
             val installer =
@@ -69,6 +73,9 @@ class Microkernel private constructor(
 
             KernelPluginScopeFactory.registerDefaultProvider {
                 ScopedEventBusProvider.fromLazy(eventBus)
+            }
+            KernelPluginScopeFactory.registerDefaultProvider {
+                ProtectedLazyProvider(ServiceRegistry::class.java) { ScopedServiceRegistryProvider(serviceRegistry) }
             }
             KernelPluginScopeFactory.registerDefaultProvider {
                 ProtectedLazyProvider(Scheduler::class.java) {
@@ -98,6 +105,7 @@ class Microkernel private constructor(
                 pluginCatalog,
                 pluginLifecycleControl,
                 KernelPluginScopeFactory,
+                serviceRegistry,
                 kernelPluginConfig.paths.plugins,
                 kernelPluginConfig.paths.libraries,
             )
