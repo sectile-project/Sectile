@@ -177,4 +177,24 @@ class TickSchedulerTest {
 
         assertTrue(exception.message!!.contains("smaller than precision"))
     }
+
+    @Test
+    fun `test runAfterDelay returns cancellable task`() {
+        val scheduler = createDefaultScheduler()
+        val zeroExecuted = AtomicBoolean(false)
+        val delayedExecuted = AtomicBoolean(false)
+
+        val zeroTask = scheduler.runAfterDelay({ zeroExecuted.set(true) }, Ticks.ZERO)
+        val delayedTask = scheduler.runAfterDelay({ delayedExecuted.set(true) }, 100.milliseconds)
+
+        zeroTask.cancel()
+        delayedTask.cancel()
+
+        assertTrue(zeroTask.canceled)
+        assertTrue(delayedTask.canceled)
+
+        repeat(5) { scheduler.tick() }
+        assertFalse(zeroExecuted.get())
+        assertFalse(delayedExecuted.get())
+    }
 }

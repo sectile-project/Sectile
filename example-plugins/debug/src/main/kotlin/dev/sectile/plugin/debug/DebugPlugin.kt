@@ -6,6 +6,7 @@ import dev.sectile.kernel.logger.logger
 import dev.sectile.kernel.plugin.spi.lifecycle.BasePluginLifecycle
 import dev.sectile.sdk.extension.eventbus
 import dev.sectile.sdk.extension.scan
+import dev.sectile.sdk.extension.scheduler
 import dev.sectile.sdk.extension.scope
 import dev.sectile.sdk.plugin.annotation.Plugin
 
@@ -21,7 +22,7 @@ class DebugPlugin : BasePluginLifecycle() {
 
         // Listeners registered through scope() are unsubscribed automatically.
         val eventbus = scope.eventbus()
-
+        scope.scheduler()
         eventbus.subscribe<String>(
             phase = ListenerPhase.MONITOR,
             priority = 255,

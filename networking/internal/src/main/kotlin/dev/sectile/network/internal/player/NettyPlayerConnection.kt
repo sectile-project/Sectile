@@ -1,5 +1,6 @@
 package dev.sectile.network.internal.player
 
+import dev.sectile.kernel.Kernel
 import dev.sectile.kernel.logger.Logger
 import dev.sectile.network.api.NetworkChannel
 import dev.sectile.network.api.packet.OutboundPacket
@@ -38,6 +39,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 class NettyPlayerConnection(
     val ctx: Channel,
@@ -69,9 +71,49 @@ class NettyPlayerConnection(
         private val future: ScheduledFuture<*>,
         private val activeTasks: MutableSet<ScheduledTask>,
     ) : ScheduledTask {
+        private val scopeHandle = AtomicReference<AutoCloseable?>()
+        private val released = AtomicBoolean(false)
+
+        fun attachScopeHandle(handle: AutoCloseable?) {
+            if (handle == null) return
+            if (released.get() || !scopeHandle.compareAndSet(null, handle)) {
+                handle.close()
+            }
+        }
+
+        fun releaseScopeHandle() {
+            released.set(true)
+            scopeHandle.getAndSet(null)?.close()
+        }
+
         override fun cancel() {
             future.cancel(false)
             activeTasks.remove(this)
+            releaseScopeHandle()
+        }
+    }
+
+    private class DisconnectEntry(
+        private val delegate: Runnable,
+    ) : Runnable {
+        private val scopeHandle = AtomicReference<AutoCloseable?>()
+        private val released = AtomicBoolean(false)
+
+        fun attachScopeHandle(handle: AutoCloseable?) {
+            if (handle == null) return
+            if (released.get() || !scopeHandle.compareAndSet(null, handle)) {
+                handle.close()
+            }
+        }
+
+        fun releaseScopeHandle() {
+            released.set(true)
+            scopeHandle.getAndSet(null)?.close()
+        }
+
+        override fun run() {
+            releaseScopeHandle()
+            delegate.run()
         }
     }
 
@@ -86,7 +128,7 @@ class NettyPlayerConnection(
     private val disconnectNotified = AtomicBoolean(false)
     private val sessionLock = Any()
     private val attributes = ConcurrentHashMap<ConnectionKey<*>, Any>()
-    private val disconnectListeners = ConcurrentLinkedQueue<Runnable>()
+    private val disconnectListeners = ConcurrentLinkedQueue<DisconnectEntry>()
     private val scheduledTasks = ConcurrentHashMap.newKeySet<ScheduledTask>()
 
     @Volatile
@@ -216,13 +258,17 @@ class NettyPlayerConnection(
                     task.run()
                 }
             } finally {
-                handle?.let { scheduledTasks.remove(it) }
+                handle?.let {
+                    scheduledTasks.remove(it)
+                    it.releaseScopeHandle()
+                }
             }
         }
         val future = ctx.eventLoop().schedule(wrapped, maxOf(0L, delay.toNanos()), TimeUnit.NANOSECONDS)
         val scheduled = NettyScheduledTask(future, scheduledTasks)
         handle = scheduled
         scheduledTasks.add(scheduled)
+        scheduled.attachScopeHandle(bindPluginScope(task) { scheduled.cancel() })
         if (disconnectNotified.get()) {
             scheduled.cancel()
         }
@@ -245,6 +291,7 @@ class NettyPlayerConnection(
         )
         val scheduled = NettyScheduledTask(future, scheduledTasks)
         scheduledTasks.add(scheduled)
+        scheduled.attachScopeHandle(bindPluginScope(task) { scheduled.cancel() })
         if (disconnectNotified.get()) {
             scheduled.cancel()
         }
@@ -256,12 +303,32 @@ class NettyPlayerConnection(
             listener.run()
             return AutoCloseable { }
         }
-        disconnectListeners.add(listener)
-        if (disconnectNotified.get() && disconnectListeners.remove(listener)) {
-            listener.run()
+        val entry = DisconnectEntry(listener)
+        disconnectListeners.add(entry)
+        if (disconnectNotified.get() && disconnectListeners.remove(entry)) {
+            entry.run()
             return AutoCloseable { }
         }
-        return AutoCloseable { disconnectListeners.remove(listener) }
+        entry.attachScopeHandle(
+            bindPluginScope(listener) {
+                disconnectListeners.remove(entry)
+                entry.releaseScopeHandle()
+            },
+        )
+        if (disconnectNotified.get() && disconnectListeners.remove(entry)) {
+            entry.releaseScopeHandle()
+            entry.run()
+            return AutoCloseable { }
+        }
+        return AutoCloseable {
+            disconnectListeners.remove(entry)
+            entry.releaseScopeHandle()
+        }
+    }
+
+    private fun bindPluginScope(owner: Any, onScopeClose: () -> Unit): AutoCloseable? {
+        if (!Kernel.isInitialized()) return null
+        return runCatching { Kernel.pluginScopeFactory.acquire(owner).onClose(onScopeClose) }.getOrNull()
     }
 
     @Suppress("UNCHECKED_CAST")

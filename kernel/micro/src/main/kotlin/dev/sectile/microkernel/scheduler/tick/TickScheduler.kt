@@ -8,7 +8,9 @@ import dev.sectile.kernel.scheduler.tick.toTicks
 import dev.sectile.microkernel.plugin.classloading.PluginClassLoader
 import dev.sectile.microkernel.plugin.lifecycle.runtime.withPluginClassLoader
 import dev.sectile.microkernel.scheduler.DefaultTask
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.math.max
@@ -28,6 +30,14 @@ class TickScheduler(
     private val stateMutex = ReentrantLock()
 
     private val tickCounter = AtomicLong(currentTick.duration)
+    private val nextTaskId = AtomicInteger(0)
+    private val scopeHandle = AtomicReference<AutoCloseable?>()
+
+    internal fun attachScopeHandle(handle: AutoCloseable?) {
+        if (handle != null && !scopeHandle.compareAndSet(null, handle)) {
+            handle.close()
+        }
+    }
 
     @Volatile
     private var acceptingTasks = true
@@ -112,9 +122,7 @@ class TickScheduler(
     override fun runAfterDelay(
         task: () -> Unit,
         delay: Duration,
-    ) {
-        runAfterDelay(task, durationToTicks(delay))
-    }
+    ): Task = runAfterDelay(task, durationToTicks(delay))
 
     override fun scheduleEvery(
         task: () -> Unit,
@@ -149,7 +157,7 @@ class TickScheduler(
             if (relativeTicks < 0L) {
                 nowTasks.addTask(wrapped)
             } else {
-                laterTasks.addTask(wrapped, relativeTicks)
+                laterTasks.addTask(nextId(), wrapped, relativeTicks)
             }
         }
     }
@@ -157,17 +165,19 @@ class TickScheduler(
     override fun runAfterDelay(
         task: () -> Unit,
         delay: Ticks,
-    ) {
+    ): Task {
         val wrapped = bindPluginContext(task)
+        val id = nextId()
         stateMutex.withLock {
             ensureAcceptingTasks()
 
             if (delay.duration <= 0L) {
-                nowTasks.addTask(wrapped)
+                nowTasks.addTask(wrapped, id)
             } else {
-                laterTasks.addTask(wrapped, delay.duration)
+                laterTasks.addTask(id, wrapped, delay.duration)
             }
         }
+        return DefaultTask(id, false, this)
     }
 
     override fun scheduleEvery(
@@ -176,28 +186,29 @@ class TickScheduler(
         executeInTheTick: Ticks,
     ): Task {
         val wrapped = bindPluginContext(task)
-        val id =
-            stateMutex.withLock {
-                ensureAcceptingTasks()
+        val id = nextId()
+        stateMutex.withLock {
+            ensureAcceptingTasks()
 
-                val initialDelay =
-                    max(
-                        0L,
-                        tickToStart.duration - tickCounter.get() - 1L,
-                    )
-
-                val intervalDelay =
-                    max(
-                        0L,
-                        executeInTheTick.duration - 1L,
-                    )
-
-                scheduleTasks.addTask(
-                    wrapped,
-                    initialDelay,
-                    intervalDelay,
+            val initialDelay =
+                max(
+                    0L,
+                    tickToStart.duration - tickCounter.get() - 1L,
                 )
-            }
+
+            val intervalDelay =
+                max(
+                    0L,
+                    executeInTheTick.duration - 1L,
+                )
+
+            scheduleTasks.addTask(
+                id,
+                wrapped,
+                initialDelay,
+                intervalDelay,
+            )
+        }
 
         return DefaultTask(id, false, this)
     }
@@ -208,25 +219,35 @@ class TickScheduler(
         delayBetweenExecute: Ticks,
     ): Task {
         val wrapped = bindPluginContext(task)
-        val id =
-            stateMutex.withLock {
-                ensureAcceptingTasks()
+        val id = nextId()
+        stateMutex.withLock {
+            ensureAcceptingTasks()
 
-                scheduleTasks.addTask(
-                    wrapped,
-                    startDelay = max(0L, delayFirstExecute.duration),
-                    delay = max(0L, delayBetweenExecute.duration),
-                )
-            }
+            scheduleTasks.addTask(
+                id,
+                wrapped,
+                startDelay = max(0L, delayFirstExecute.duration),
+                delay = max(0L, delayBetweenExecute.duration),
+            )
+        }
 
         return DefaultTask(id, false, this)
     }
 
     override fun cancelTask(taskId: Int): Boolean = stateMutex.withLock {
-        scheduleTasks.removeTask(taskId)
+        scheduleTasks.removeTask(taskId) || laterTasks.removeTask(taskId) || nowTasks.removeTask(taskId)
+    }
+
+    private fun nextId(): Int {
+        var id: Int
+        do {
+            id = nextTaskId.incrementAndGet()
+        } while (id == 0)
+        return id
     }
 
     override fun shutdown(cancelPendingTasks: Boolean) {
+        scopeHandle.getAndSet(null)?.close()
         stateMutex.withLock {
             acceptingTasks = false
 

@@ -489,6 +489,23 @@ class CommandSystemTest {
         assertTrue(registry.resolve("rootcmd") != null)
     }
 
+    @Test
+    fun `direct registration unregister removes command from scoped provider`() {
+        val registry = createRegistry()
+        val scoped = ScopedCommandRegistryProvider(registry)
+
+        val registration = scoped.register(
+            object : BaseCommand("direct") {
+                override fun execute(sender: CommandSender, args: Arguments) = Unit
+            },
+        )
+
+        assertTrue(registry.resolve("direct") != null)
+        registration.unregister()
+        assertNull(registry.resolve("direct"))
+        assertFalse(scoped.unregister("direct"))
+    }
+
     private fun createRegistry(): DefaultCommandRegistry = DefaultCommandRegistry(TestLogger)
 
     private fun createPlayer(world: World, username: String): Player = InternalPlayer(

@@ -34,7 +34,18 @@ object KernelPluginScopeFactory : PluginScopeFactory {
         if (classLoader !is PluginClassLoader) {
             throw IllegalStateException("Attempted to acquire a plugin scope from non-plugin classloader: $classLoader")
         }
-        return PluginsScopeContainer.getOrCreateScope(classLoader) { create(classLoader.id) }
+        if (classLoader.isClosed) {
+            throw IllegalStateException("Attempted to acquire a plugin scope from closed plugin classloader: ${classLoader.id}")
+        }
+        val scope = PluginsScopeContainer.getOrCreateScope(classLoader) { create(classLoader.id) }
+        if (classLoader.isClosed) {
+            PluginsScopeContainer.removeScope(classLoader)
+            if (scope is KernelPluginScope) {
+                runCatching { scope.close() }
+            }
+            throw IllegalStateException("Attempted to acquire a plugin scope from closed plugin classloader: ${classLoader.id}")
+        }
+        return scope
     }
 
     internal fun create(pluginId: PluginId? = null): PluginScope {

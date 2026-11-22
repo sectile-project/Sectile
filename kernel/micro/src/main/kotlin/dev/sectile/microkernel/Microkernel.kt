@@ -3,6 +3,8 @@ package dev.sectile.microkernel
 import dev.sectile.kernel.Kernel
 import dev.sectile.kernel.event.EventBus
 import dev.sectile.kernel.logger.Logger
+import dev.sectile.kernel.plugin.scope.provider.ProtectedLazyProvider
+import dev.sectile.kernel.scheduler.Scheduler
 import dev.sectile.kernel.scheduler.SchedulerProvider
 import dev.sectile.microkernel.config.KernelPluginConfig
 import dev.sectile.microkernel.event.bus.DefaultEventBus
@@ -17,6 +19,7 @@ import dev.sectile.microkernel.plugin.manifest.PluginPropertiesReader
 import dev.sectile.microkernel.plugin.scanner.PluginScanner
 import dev.sectile.microkernel.plugin.scope.KernelPluginScopeFactory
 import dev.sectile.microkernel.plugin.scope.provider.ScopedEventBusProvider
+import dev.sectile.microkernel.plugin.scope.provider.ScopedExecutorProvider
 import dev.sectile.microkernel.plugin.scope.provider.ScopedLoggerSpy
 import dev.sectile.microkernel.plugin.validation.PluginDependencyValidator
 import dev.sectile.microkernel.scheduler.KernelSchedulerProvider
@@ -66,6 +69,24 @@ class Microkernel private constructor(
 
             KernelPluginScopeFactory.registerDefaultProvider {
                 ScopedEventBusProvider.fromLazy(eventBus)
+            }
+            KernelPluginScopeFactory.registerDefaultProvider {
+                ProtectedLazyProvider(Scheduler::class.java) {
+                    if (schedulerProvider is KernelSchedulerProvider) {
+                        schedulerProvider.createRealtime(bindToScope = false)
+                    } else {
+                        schedulerProvider.createRealtime()
+                    }
+                }
+            }
+            KernelPluginScopeFactory.registerDefaultProvider {
+                ScopedExecutorProvider {
+                    if (schedulerProvider is KernelSchedulerProvider) {
+                        schedulerProvider.createVirtualExecutor(bindToScope = false)
+                    } else {
+                        schedulerProvider.createVirtualExecutor()
+                    }
+                }
             }
 
             Kernel.init(

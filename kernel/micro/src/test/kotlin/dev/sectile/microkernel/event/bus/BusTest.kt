@@ -149,6 +149,28 @@ class BusTest {
         assertEquals(1, eventBus.size())
     }
 
+    @Test
+    fun `direct subscription unsubscribe clears scoped provider list and isolates ownership`() {
+        val eventBus = DefaultEventBus(PrintlnLogger())
+        val scopedA = ScopedEventBusProvider(eventBus)
+        val scopedB = ScopedEventBusProvider(eventBus)
+
+        var countB = 0
+        val subA = scopedA.subscribe<UserJoinEvent> { }
+        val subB = scopedB.subscribe<UserJoinEvent> { countB++ }
+
+        assertEquals(1, scopedA.subscriptions.size)
+        subA.unsubscribe()
+        assertEquals(0, scopedA.subscriptions.size)
+
+        scopedA.unsubscribe(subB)
+        eventBus.publish(UserJoinEvent("Bob"))
+        assertEquals(1, countB)
+
+        scopedB.close()
+        assertEquals(0, eventBus.size())
+    }
+
     // Example events
     data class UserJoinEvent(
         val username: String,

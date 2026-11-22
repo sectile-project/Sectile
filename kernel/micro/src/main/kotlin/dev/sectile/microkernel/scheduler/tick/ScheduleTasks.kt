@@ -19,17 +19,15 @@ internal class ScheduleTasks {
 
     private var tasks = arrayOfNulls<ScheduledRunnable>(16)
 
-    private var taskIdCount = 0
     private var size = 0
 
     fun addTask(
+        id: Int,
         runnable: () -> Unit,
         startDelay: Long,
         delay: Long,
-    ): Int {
+    ) {
         ensureCapacity()
-
-        val id = nextTaskId()
 
         tasks[size++] =
             ScheduledRunnable(
@@ -38,8 +36,6 @@ internal class ScheduleTasks {
                 delay = maxOf(0L, delay),
                 countdown = maxOf(0L, startDelay),
             )
-
-        return id
     }
 
     fun tickAndDrainTo(batch: TaskBatch) {
@@ -120,13 +116,5 @@ internal class ScheduleTasks {
         }
 
         tasks = tasks.copyOf(tasks.size * 2)
-    }
-
-    private fun nextTaskId(): Int {
-        do {
-            taskIdCount++
-        } while (taskIdCount == 0)
-
-        return taskIdCount
     }
 }

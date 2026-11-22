@@ -37,7 +37,7 @@ interface TickDrivenScheduler : Scheduler {
     fun runAfterDelay(
         task: () -> Unit,
         delay: Ticks,
-    )
+    ): Task
 
     /**
      * Schedules a repeating task to execute at fixed tick intervals, starting at a specific tick.

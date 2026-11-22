@@ -8,6 +8,7 @@ import dev.sectile.kernel.plugin.scope.provider.CloseableDependencyProvider
 import dev.sectile.kernel.plugin.scope.provider.ProtectedDependencyProvider
 import dev.sectile.kernel.plugin.scope.provider.ProtectedLazyProvider
 import java.util.Collections
+import java.util.concurrent.atomic.AtomicBoolean
 
 class ScopedEventBusProvider(
     private val delegate: EventBus,
@@ -21,13 +22,16 @@ class ScopedEventBusProvider(
         fun fromLazy(delegate: EventBus): ProtectedLazyProvider<EventBus> = ProtectedLazyProvider(EventBus::class.java) { ScopedEventBusProvider(delegate) }
     }
 
-    private fun addSubscription(subscription: Subscription) {
-        if (subscription.handlers.isNotEmpty()) {
-            subscriptions.add(subscription)
+    private fun wrapSubscription(subscription: Subscription): Subscription {
+        if (subscription.handlers.isEmpty()) {
+            return subscription
         }
+        val scoped = ScopedSubscription(subscription)
+        subscriptions.add(scoped)
+        return scoped
     }
 
-    override fun subscribe(listener: Any): Subscription = delegate.subscribe(listener).also(::addSubscription)
+    override fun subscribe(listener: Any): Subscription = wrapSubscription(delegate.subscribe(listener))
 
     override fun <T : Any> subscribe(
         eventClass: Class<T>,
@@ -35,13 +39,17 @@ class ScopedEventBusProvider(
         priority: Int,
         phase: ListenerPhase,
         block: (T) -> Unit,
-    ): Subscription = delegate.subscribe(eventClass, ignoreCancelled, priority, phase, block).also(::addSubscription)
+    ): Subscription = wrapSubscription(delegate.subscribe(eventClass, ignoreCancelled, priority, phase, block))
 
-    override fun subscribe(handler: EventHandler): Subscription = delegate.subscribe(handler).also(::addSubscription)
+    override fun subscribe(handler: EventHandler): Subscription = wrapSubscription(delegate.subscribe(handler))
 
     override fun unsubscribe(subscription: Subscription) {
-        subscription.unsubscribe()
-        subscriptions.remove(subscription)
+        val removed = synchronized(subscriptions) {
+            subscriptions.remove(subscription)
+        }
+        if (removed) {
+            subscription.unsubscribe()
+        }
     }
 
     override fun publish(event: Any) {
@@ -59,5 +67,23 @@ class ScopedEventBusProvider(
 
     override fun close() {
         clear()
+    }
+
+    private inner class ScopedSubscription(
+        private val raw: Subscription,
+    ) : Subscription {
+        private val unsubscribed = AtomicBoolean(false)
+
+        override val handlers: Collection<EventHandler>
+            get() = raw.handlers
+
+        override fun unsubscribe() {
+            synchronized(subscriptions) {
+                subscriptions.remove(this)
+            }
+            if (unsubscribed.compareAndSet(false, true)) {
+                raw.unsubscribe()
+            }
+        }
     }
 }

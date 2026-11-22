@@ -9,6 +9,7 @@ import dev.sectile.kernel.plugin.query.PluginCatalog
 import dev.sectile.kernel.plugin.scope.PluginScopeFactory
 import dev.sectile.kernel.scheduler.SchedulerProvider
 import java.nio.file.Path
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -29,6 +30,7 @@ class Kernel private constructor(
         private var ref: Kernel? = null
 
         private val stopTasks = CopyOnWriteArrayList<() -> Unit>()
+        private val stopTaskHandles = ConcurrentHashMap<() -> Unit, AutoCloseable>()
         private val shuttingDown = AtomicBoolean(false)
 
         val bus: EventDispatcher get() = instance.bus
@@ -93,12 +95,14 @@ class Kernel private constructor(
             if (ref != null) {
                 runCatching { pluginScopeFactory.acquire(task) }
                     .getOrNull()
-                    ?.onClose { stopTasks.remove(task) }
+                    ?.onClose { removeStopTask(task) }
+                    ?.let { handle -> stopTaskHandles.put(task, handle)?.close() }
             }
         }
 
         fun removeStopTask(task: () -> Unit) {
             stopTasks.remove(task)
+            stopTaskHandles.remove(task)?.close()
         }
 
         val instance: Kernel

@@ -8,6 +8,7 @@ import java.net.URL
 import java.net.URLClassLoader
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicBoolean
 
 internal class PluginClassLoader(
     val id: PluginId,
@@ -16,6 +17,11 @@ internal class PluginClassLoader(
     parentClassLoader: ClassLoader,
     private val stagedJarPath: Path? = null,
 ) : URLClassLoader(id.toString(), urls, parentClassLoader) {
+    private val closed = AtomicBoolean(false)
+
+    internal val isClosed: Boolean
+        get() = closed.get()
+
     companion object {
         init {
             registerAsParallelCapable()
@@ -23,6 +29,9 @@ internal class PluginClassLoader(
     }
 
     override fun close() {
+        if (!closed.compareAndSet(false, true)) {
+            return
+        }
         val scope = PluginsScopeContainer.removeScope(this)
         if (scope is KernelPluginScope) {
             runCatching {

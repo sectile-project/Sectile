@@ -8,6 +8,7 @@ import dev.sectile.engine.api.player.Player
 import dev.sectile.kernel.plugin.scope.provider.CloseableDependencyProvider
 import dev.sectile.kernel.plugin.scope.provider.ProtectedDependencyProvider
 import java.util.Collections
+import java.util.concurrent.atomic.AtomicBoolean
 
 class ScopedCommandRegistryProvider(
     private val delegate: CommandRegistry,
@@ -23,9 +24,9 @@ class ScopedCommandRegistryProvider(
         get() = delegate.commands
 
     override fun register(command: Command): CommandRegistration {
-        val registration = delegate.register(command)
-        registrations.add(registration)
-        return registration
+        val wrapped = ScopedRegistration(delegate.register(command))
+        registrations.add(wrapped)
+        return wrapped
     }
 
     override fun unregister(name: String): Boolean {
@@ -81,5 +82,23 @@ class ScopedCommandRegistryProvider(
             registrations.toList().also { registrations.clear() }
         }
         snapshot.forEach { it.unregister() }
+    }
+
+    private inner class ScopedRegistration(
+        private val raw: CommandRegistration,
+    ) : CommandRegistration {
+        private val unregistered = AtomicBoolean(false)
+
+        override val command: Command
+            get() = raw.command
+
+        override fun unregister() {
+            synchronized(registrations) {
+                registrations.remove(this)
+            }
+            if (unregistered.compareAndSet(false, true)) {
+                raw.unregister()
+            }
+        }
     }
 }

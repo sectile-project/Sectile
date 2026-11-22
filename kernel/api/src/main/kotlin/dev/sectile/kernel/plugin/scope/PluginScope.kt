@@ -11,7 +11,7 @@ interface PluginScope {
 
     fun remove(type: Class<*>): DependencyProvider<*>?
 
-    fun onClose(action: () -> Unit)
+    fun onClose(action: () -> Unit): AutoCloseable
 
-    fun onClose(closeable: AutoCloseable) = onClose { closeable.close() }
+    fun onClose(closeable: AutoCloseable): AutoCloseable = onClose { closeable.close() }
 }

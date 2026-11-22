@@ -13,20 +13,29 @@ internal class KernelPluginScope(
 ) : PluginScope,
     AutoCloseable {
     private val providers = HashMap<Class<*>, DependencyProvider<*>>()
-    private val closeActions = ArrayList<() -> Unit>()
+    private val closeActions = LinkedHashSet<CloseEntry>()
+
+    @Volatile
+    private var closed = false
 
     @Suppress("UNCHECKED_CAST")
-    override fun <T : Any> get(type: Class<T>): T? = synchronized(providers) {
-        providers[type]?.provide() as? T
+    override fun <T : Any> get(type: Class<T>): T? {
+        val provider = synchronized(providers) {
+            ensureOpen()
+            providers[type]
+        }
+        return provider?.provide() as? T
     }
 
     @Suppress("UNCHECKED_CAST")
     override fun <T : Any> getProvider(type: Class<T>): DependencyProvider<T>? = synchronized(providers) {
+        ensureOpen()
         providers[type] as? DependencyProvider<T>
     }
 
     override fun <T : Any> put(provider: DependencyProvider<T>) {
         synchronized(providers) {
+            ensureOpen()
             val type = provider.type
             val oldProvider = providers[type]
 
@@ -41,6 +50,7 @@ internal class KernelPluginScope(
 
     override fun remove(type: Class<*>): DependencyProvider<*>? {
         synchronized(providers) {
+            ensureOpen()
             val provider = providers[type]
 
             if (provider is ProtectedDependencyProvider) {
@@ -51,9 +61,24 @@ internal class KernelPluginScope(
         }
     }
 
-    override fun onClose(action: () -> Unit) {
-        synchronized(providers) {
-            closeActions.add(action)
+    override fun onClose(action: () -> Unit): AutoCloseable {
+        val entry = CloseEntry(action)
+        val alreadyClosed = synchronized(providers) {
+            if (closed) {
+                true
+            } else {
+                closeActions.add(entry)
+                false
+            }
+        }
+        if (alreadyClosed) {
+            runCatching(action).onFailure { logCloseError("close hook", it) }
+            throw IllegalStateException("PluginScope is closed")
+        }
+        return AutoCloseable {
+            synchronized(providers) {
+                closeActions.remove(entry)
+            }
         }
     }
 
@@ -61,7 +86,11 @@ internal class KernelPluginScope(
         val actionsSnapshot: List<() -> Unit>
         val providersSnapshot: List<DependencyProvider<*>>
         synchronized(providers) {
-            actionsSnapshot = closeActions.asReversed().toList()
+            if (closed) {
+                return
+            }
+            closed = true
+            actionsSnapshot = closeActions.toList().asReversed().map { it.action }
             closeActions.clear()
             providersSnapshot = providers.values.toList()
             providers.clear()
@@ -71,6 +100,12 @@ internal class KernelPluginScope(
             runCatching(action).onFailure { logCloseError("close hook", it) }
         }
         providersSnapshot.forEach(::closeProvider)
+    }
+
+    private class CloseEntry(val action: () -> Unit)
+
+    private fun ensureOpen() {
+        check(!closed) { "PluginScope is closed" }
     }
 
     private fun closeProvider(provider: DependencyProvider<*>?) {

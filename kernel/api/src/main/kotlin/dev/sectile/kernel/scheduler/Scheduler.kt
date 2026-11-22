@@ -6,7 +6,7 @@ import kotlin.time.Duration.Companion.seconds
 /**
  * A time-based scheduler for executing tasks at specific moments or after defined delays.
  */
-interface Scheduler {
+interface Scheduler : AutoCloseable {
     /**
      * The smallest time increment supported by this scheduler.
      * Example: If a tick-scheduler executes a tick every 50ms, this unit is 50ms.
@@ -82,7 +82,7 @@ interface Scheduler {
     fun runAfterDelay(
         task: () -> Unit,
         delay: Duration,
-    )
+    ): Task
 
     /**
      * Schedules a repeating task with a fixed delay between executions, starting immediately.
@@ -129,4 +129,6 @@ interface Scheduler {
      * @param cancelPendingTasks If true, all pending tasks will be canceled.
      */
     fun shutdown(cancelPendingTasks: Boolean = true)
+
+    override fun close() = shutdown(cancelPendingTasks = true)
 }

@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentHashMap
 object ConfigServiceRegistry {
 
     private val services = ConcurrentHashMap<String, ConfigService>()
+    private val scopeHandles = ConcurrentHashMap<ConfigService, AutoCloseable>()
 
     fun register(service: ConfigService) {
         require(service.fileExtensions.isNotEmpty()) {
@@ -20,10 +21,12 @@ object ConfigServiceRegistry {
             runCatching { Kernel.pluginScopeFactory.acquire(service) }
                 .getOrNull()
                 ?.onClose { unregister(service) }
+                ?.let { handle -> scopeHandles.put(service, handle)?.close() }
         }
     }
 
     fun unregister(service: ConfigService) {
+        scopeHandles.remove(service)?.close()
         service.fileExtensions.forEach { extension ->
             services.remove(normalizeExtension(extension), service)
         }

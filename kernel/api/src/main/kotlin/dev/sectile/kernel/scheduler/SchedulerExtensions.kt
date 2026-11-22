@@ -5,9 +5,7 @@ import kotlin.time.Duration
 fun Scheduler.after(
     delay: Duration,
     task: () -> Unit,
-) {
-    this.runAfterDelay(task, delay)
-}
+): Task = this.runAfterDelay(task, delay)
 
 fun Scheduler.at(
     time: Duration,
