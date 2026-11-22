@@ -424,6 +424,71 @@ class CommandSystemTest {
         assertIs<ServerMessagePacket>(conn1.sentPackets.last())
     }
 
+    @Test
+    fun `scoped command registry removes custom argTypeId completers on close while keeping builtins`() {
+        val world = SimpleWorld("lobby", "Lobby")
+        InternalWorldRegistry.register(world)
+
+        val registry = createRegistry()
+        val scoped = ScopedCommandRegistryProvider(registry)
+
+        scoped.register(
+            object : BaseCommand("warp") {
+                init {
+                    arg("target", typeId = "warp-target") { listOf("spawn", "arena") }
+                    arg("world", typeId = "world") { listOf("lobby") }
+                }
+
+                override fun execute(sender: CommandSender, args: Arguments) = Unit
+            },
+        )
+
+        val sender = RecordingSender()
+        assertEquals(listOf("arena", "spawn"), registry.completeArgType(sender, "warp-target", "").sorted())
+
+        scoped.close()
+
+        assertNull(registry.resolve("warp"))
+        assertTrue(registry.completeArgType(sender, "warp-target", "").isEmpty())
+        assertEquals(listOf("lobby"), registry.completeArgType(sender, "world", ""))
+    }
+
+    @Test
+    fun `scoped command registry cannot unregister commands from root or other scopes`() {
+        val registry = createRegistry()
+        registry.register(
+            object : BaseCommand("rootcmd") {
+                override fun execute(sender: CommandSender, args: Arguments) = Unit
+            },
+        )
+
+        val scopeA = ScopedCommandRegistryProvider(registry)
+        val scopeB = ScopedCommandRegistryProvider(registry)
+
+        scopeA.register(
+            object : BaseCommand("cmda") {
+                override fun execute(sender: CommandSender, args: Arguments) = Unit
+            },
+        )
+        scopeB.register(
+            object : BaseCommand("cmdb") {
+                override fun execute(sender: CommandSender, args: Arguments) = Unit
+            },
+        )
+
+        assertFalse(scopeA.unregister("rootcmd"))
+        assertFalse(scopeA.unregister("cmdb"))
+        assertTrue(registry.resolve("rootcmd") != null)
+        assertTrue(registry.resolve("cmdb") != null)
+
+        assertTrue(scopeA.unregister("cmda"))
+        assertNull(registry.resolve("cmda"))
+
+        scopeB.close()
+        assertNull(registry.resolve("cmdb"))
+        assertTrue(registry.resolve("rootcmd") != null)
+    }
+
     private fun createRegistry(): DefaultCommandRegistry = DefaultCommandRegistry(TestLogger)
 
     private fun createPlayer(world: World, username: String): Player = InternalPlayer(
@@ -492,7 +557,7 @@ class CommandSystemTest {
         override fun schedule(delay: Duration, task: Runnable): ScheduledTask = ScheduledTask { }
         override fun scheduleAtFixedRate(initialDelay: Duration, period: Duration, task: Runnable): ScheduledTask = ScheduledTask { }
 
-        override fun onDisconnect(listener: Runnable) = Unit
+        override fun onDisconnect(listener: Runnable): AutoCloseable = AutoCloseable { }
         override fun <T : Any> getAttribute(key: ConnectionKey<T>): T? = null
         override fun <T : Any> setAttribute(key: ConnectionKey<T>, value: T?) = Unit
         override fun <T : Any> getOrPutAttribute(key: ConnectionKey<T>, defaultValue: () -> T): T = defaultValue()

@@ -16,6 +16,7 @@ import dev.sectile.microkernel.plugin.lifecycle.DefaultPluginLifecycleControl
 import dev.sectile.microkernel.plugin.manifest.PluginPropertiesReader
 import dev.sectile.microkernel.plugin.scanner.PluginScanner
 import dev.sectile.microkernel.plugin.scope.KernelPluginScopeFactory
+import dev.sectile.microkernel.plugin.scope.provider.ScopedEventBusProvider
 import dev.sectile.microkernel.plugin.scope.provider.ScopedLoggerSpy
 import dev.sectile.microkernel.plugin.validation.PluginDependencyValidator
 import dev.sectile.microkernel.scheduler.KernelSchedulerProvider
@@ -42,6 +43,15 @@ class Microkernel private constructor(
 
             val pluginCatalog = DefaultPluginCatalog()
             val libraryResolver = PluginLibraryResolver(LibraryPathResolver(kernelPluginConfig.paths.libraries))
+            val scanner = PluginScanner(PluginPropertiesReader(), logger)
+            val installer =
+                PluginInstaller(
+                    kernelPluginConfig,
+                    pluginCatalog,
+                    scanner,
+                    PluginDependencyValidator(),
+                    logger,
+                )
 
             val pluginLifecycleControl =
                 DefaultPluginLifecycleControl(
@@ -50,7 +60,13 @@ class Microkernel private constructor(
                     kernelPluginConfig,
                     logger,
                     parentClassLoader,
+                    scanner,
+                    installer,
                 )
+
+            KernelPluginScopeFactory.registerDefaultProvider {
+                ScopedEventBusProvider.fromLazy(eventBus)
+            }
 
             Kernel.init(
                 eventBus,
@@ -71,15 +87,6 @@ class Microkernel private constructor(
                 pluginLifecycleControl.shutdown()
             }
 
-            val scanner = PluginScanner(PluginPropertiesReader(), logger)
-            val installer =
-                PluginInstaller(
-                    kernelPluginConfig,
-                    pluginCatalog,
-                    scanner,
-                    PluginDependencyValidator(),
-                    logger,
-                )
             val selectedPluginIds =
                 installer.install(
                     kernelPluginConfig.paths.plugins.toFile(),

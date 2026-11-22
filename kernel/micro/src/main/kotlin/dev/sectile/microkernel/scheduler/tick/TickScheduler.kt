@@ -5,6 +5,8 @@ import dev.sectile.kernel.scheduler.exception.SchedulerClosedException
 import dev.sectile.kernel.scheduler.tick.TickDrivenScheduler
 import dev.sectile.kernel.scheduler.tick.Ticks
 import dev.sectile.kernel.scheduler.tick.toTicks
+import dev.sectile.microkernel.plugin.classloading.PluginClassLoader
+import dev.sectile.microkernel.plugin.lifecycle.runtime.withPluginClassLoader
 import dev.sectile.microkernel.scheduler.DefaultTask
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.ReentrantLock
@@ -93,9 +95,10 @@ class TickScheduler(
     }
 
     override fun runNow(task: () -> Unit) {
+        val wrapped = bindPluginContext(task)
         stateMutex.withLock {
             ensureAcceptingTasks()
-            nowTasks.addTask(task)
+            nowTasks.addTask(wrapped)
         }
     }
 
@@ -137,15 +140,16 @@ class TickScheduler(
         task: () -> Unit,
         tickToExecute: Ticks,
     ) {
+        val wrapped = bindPluginContext(task)
         stateMutex.withLock {
             ensureAcceptingTasks()
 
             val relativeTicks = tickToExecute.duration - tickCounter.get() - 1L
 
             if (relativeTicks < 0L) {
-                nowTasks.addTask(task)
+                nowTasks.addTask(wrapped)
             } else {
-                laterTasks.addTask(task, relativeTicks)
+                laterTasks.addTask(wrapped, relativeTicks)
             }
         }
     }
@@ -154,13 +158,14 @@ class TickScheduler(
         task: () -> Unit,
         delay: Ticks,
     ) {
+        val wrapped = bindPluginContext(task)
         stateMutex.withLock {
             ensureAcceptingTasks()
 
             if (delay.duration <= 0L) {
-                nowTasks.addTask(task)
+                nowTasks.addTask(wrapped)
             } else {
-                laterTasks.addTask(task, delay.duration)
+                laterTasks.addTask(wrapped, delay.duration)
             }
         }
     }
@@ -170,6 +175,7 @@ class TickScheduler(
         tickToStart: Ticks,
         executeInTheTick: Ticks,
     ): Task {
+        val wrapped = bindPluginContext(task)
         val id =
             stateMutex.withLock {
                 ensureAcceptingTasks()
@@ -187,7 +193,7 @@ class TickScheduler(
                     )
 
                 scheduleTasks.addTask(
-                    task,
+                    wrapped,
                     initialDelay,
                     intervalDelay,
                 )
@@ -201,12 +207,13 @@ class TickScheduler(
         delayFirstExecute: Ticks,
         delayBetweenExecute: Ticks,
     ): Task {
+        val wrapped = bindPluginContext(task)
         val id =
             stateMutex.withLock {
                 ensureAcceptingTasks()
 
                 scheduleTasks.addTask(
-                    task,
+                    wrapped,
                     startDelay = max(0L, delayFirstExecute.duration),
                     delay = max(0L, delayBetweenExecute.duration),
                 )
@@ -237,6 +244,13 @@ class TickScheduler(
         if (!acceptingTasks) {
             throw SchedulerClosedException()
         }
+    }
+
+    private fun bindPluginContext(task: () -> Unit): () -> Unit {
+        val loader = (task.javaClass.classLoader as? PluginClassLoader)
+            ?: (Thread.currentThread().contextClassLoader as? PluginClassLoader)
+            ?: return task
+        return { withPluginClassLoader(loader, task) }
     }
 
     private fun durationToTicks(duration: Duration): Ticks {

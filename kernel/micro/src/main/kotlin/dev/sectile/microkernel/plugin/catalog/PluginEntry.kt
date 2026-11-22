@@ -10,7 +10,8 @@ import dev.sectile.microkernel.plugin.classloading.PluginClassLoader
 import dev.sectile.microkernel.plugin.scanner.PluginCandidate
 
 internal class PluginEntry(
-    val candidate: PluginCandidate,
+    @Volatile
+    var candidate: PluginCandidate,
     initialState: PluginState,
 ) {
     val id: PluginId

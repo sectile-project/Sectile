@@ -1,6 +1,7 @@
 package dev.sectile.network.api
 
 import dev.sectile.network.api.packet.PacketsSender
+import dev.sectile.network.api.packet.handler.PacketHandlerRegistry
 import dev.sectile.network.api.packet.handler.PacketHandlerStorage
 import dev.sectile.network.api.player.connection.ConnectionStage
 
@@ -31,22 +32,13 @@ class NetworkConnector private constructor(
          *
          * This is the only packet handler registry a plugin may write into.
          */
-        val packetHandlers: PacketHandlerStorage
-            get() = handlers(ConnectionStage.POST_LOGIN)
+        val packetHandlers: PacketHandlerRegistry
+            get() = connector.stageStorages[ConnectionStage.POST_LOGIN]
+                ?: error("No packet handler storage registered for stage ${ConnectionStage.POST_LOGIN}")
 
         /** Shared batch packet dispatcher for multi-connection broadcasts. */
         val packetsSender: PacketsSender
             get() = connector.packetsSender
-
-        /**
-         * Returns the [PacketHandlerStorage] associated with [stage].
-         *
-         * Only [ConnectionStage.POST_LOGIN] may be used: the login stages are managed by the
-         * stage machine and are extended through
-         * [dev.sectile.network.api.player.stage.StageHooks].
-         */
-        fun handlers(stage: ConnectionStage): PacketHandlerStorage = connector.stageStorages[stage]
-            ?: error("No packet handler storage registered for stage $stage")
 
         /** Initializes the global [NetworkConnector] instance. */
         fun init(

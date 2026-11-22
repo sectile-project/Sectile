@@ -11,6 +11,9 @@ import dev.sectile.microkernel.plugin.catalog.PluginEntry
 import dev.sectile.microkernel.plugin.classloading.PluginClassLoader
 import dev.sectile.microkernel.plugin.library.PluginLibraryResolver
 import java.net.URL
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 
 internal class PluginInstanceCreator(
     private val catalog: DefaultPluginCatalog,
@@ -21,40 +24,44 @@ internal class PluginInstanceCreator(
     fun create(entry: PluginEntry): LoadedPlugin {
         val manifest = entry.candidate.manifest
         val dependencyClassLoaders = directClassLoaderParentsOf(entry)
-        val pluginUrl =
-            entry.candidate.jarFile
-                .toURI()
-                .toURL()
-        val classLoaderUrls =
+        val libraryUrls: List<URL> =
             if (manifest.boostrapClass == null) {
-                arrayOf(pluginUrl)
+                emptyList()
             } else {
                 val librariesRequest = LibrariesRequest()
-                runBootstrap(entry, manifest.boostrapClass, pluginUrl, dependencyClassLoaders, librariesRequest)
+                runBootstrap(entry, manifest.boostrapClass, dependencyClassLoaders, librariesRequest)
 
-                val libraryUrls =
-                    try {
-                        libraryResolver.resolve(librariesRequest)
-                    } catch (error: Throwable) {
-                        throw PluginLoadException("Could not resolve libraries for plugin ${entry.id}.", error)
-                    }
-
-                if (libraryUrls.isEmpty()) {
-                    arrayOf(pluginUrl)
-                } else {
-                    Array(libraryUrls.size + 1) { index ->
-                        if (index == 0) pluginUrl else libraryUrls[index - 1]
-                    }
+                try {
+                    libraryResolver.resolve(librariesRequest)
+                } catch (error: Throwable) {
+                    throw PluginLoadException("Could not resolve libraries for plugin ${entry.id}.", error)
                 }
             }
 
+        val stagedJar = stageJar(entry)
         val runtimeClassLoader =
-            PluginClassLoader(
-                entry.id,
-                classLoaderUrls,
-                dependencyClassLoaders,
-                parentClassLoader,
-            )
+            try {
+                val pluginUrl = stagedJar.toUri().toURL()
+                val classLoaderUrls =
+                    if (libraryUrls.isEmpty()) {
+                        arrayOf(pluginUrl)
+                    } else {
+                        Array(libraryUrls.size + 1) { index ->
+                            if (index == 0) pluginUrl else libraryUrls[index - 1]
+                        }
+                    }
+
+                PluginClassLoader(
+                    entry.id,
+                    classLoaderUrls,
+                    dependencyClassLoaders,
+                    parentClassLoader,
+                    stagedJar,
+                )
+            } catch (error: Throwable) {
+                runCatching { Files.deleteIfExists(stagedJar) }
+                throw PluginLoadException("Could not prepare classloader for plugin ${entry.id}.", error)
+            }
 
         return try {
             val lifecycle =
@@ -73,17 +80,23 @@ internal class PluginInstanceCreator(
     private fun runBootstrap(
         entry: PluginEntry,
         bootstrapClassName: String,
-        pluginUrl: URL,
         dependencyClassLoaders: List<ClassLoader>,
         librariesRequest: LibrariesRequest,
     ) {
+        val stagedJar = stageJar(entry)
         val bootstrapClassLoader =
-            PluginClassLoader(
-                entry.id,
-                arrayOf(pluginUrl),
-                dependencyClassLoaders,
-                parentClassLoader,
-            )
+            try {
+                PluginClassLoader(
+                    entry.id,
+                    arrayOf(stagedJar.toUri().toURL()),
+                    dependencyClassLoaders,
+                    parentClassLoader,
+                    stagedJar,
+                )
+            } catch (error: Throwable) {
+                runCatching { Files.deleteIfExists(stagedJar) }
+                throw PluginLoadException("Could not prepare bootstrap classloader for plugin ${entry.id}.", error)
+            }
 
         try {
             withPluginClassLoader(bootstrapClassLoader) {
@@ -96,6 +109,13 @@ internal class PluginInstanceCreator(
             runCatching { bootstrapClassLoader.close() }
                 .onFailure { error -> logger.error("Could not close bootstrap classloader for plugin ${entry.id}.", error) }
         }
+    }
+
+    private fun stageJar(entry: PluginEntry): Path {
+        val source = entry.candidate.jarFile.toPath()
+        val staged = Files.createTempFile("sectile-plugin-${entry.id.value}-", ".jar")
+        Files.copy(source, staged, StandardCopyOption.REPLACE_EXISTING)
+        return staged
     }
 
     private fun directClassLoaderParentsOf(entry: PluginEntry): List<ClassLoader> {

@@ -42,7 +42,6 @@ public final class DefaultEventBus implements EventBus {
     }
   }
 
-  @Override
   public void clear() {
     storage.clear();
   }

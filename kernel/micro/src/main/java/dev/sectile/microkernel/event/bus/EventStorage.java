@@ -20,9 +20,13 @@ final class EventStorage {
   }
 
   public synchronized boolean removeAndIsEmpty(final EventHandler listener) {
-    final ListenerStorage listenerStorage = listenersPerPhase[listener.getPhase().ordinal()];
-    listenerStorage.remove(listener);
-    return listenerStorage.isEmpty();
+    listenersPerPhase[listener.getPhase().ordinal()].remove(listener);
+    for (final ListenerStorage storage : listenersPerPhase) {
+      if (!storage.isEmpty()) {
+        return false;
+      }
+    }
+    return true;
   }
 
   public void execute(final Object event) {

@@ -6,12 +6,15 @@ import dev.sectile.microkernel.plugin.scope.KernelPluginScope
 import dev.sectile.microkernel.plugin.scope.PluginsScopeContainer
 import java.net.URL
 import java.net.URLClassLoader
+import java.nio.file.Files
+import java.nio.file.Path
 
 internal class PluginClassLoader(
     val id: PluginId,
     urls: Array<URL>,
     private val dependencyClassLoaders: List<ClassLoader>,
     parentClassLoader: ClassLoader,
+    private val stagedJarPath: Path? = null,
 ) : URLClassLoader(id.toString(), urls, parentClassLoader) {
     companion object {
         init {
@@ -29,7 +32,11 @@ internal class PluginClassLoader(
             }
         }
         super.close()
+        runCatching { stagedJarPath?.let(Files::deleteIfExists) }
+            .onFailure { Microkernel.instance.rootLogger.error("Failed to delete staged jar for id: $id", it) }
     }
+
+    internal fun dependsOn(classLoader: ClassLoader): Boolean = classLoader in dependencyClassLoaders
 
     override fun loadClass(
         name: String,

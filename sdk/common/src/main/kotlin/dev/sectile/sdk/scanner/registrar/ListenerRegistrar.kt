@@ -8,7 +8,7 @@ object ListenerRegistrar : ObjectRegistrar<Any> {
     override val targetType = Any::class.java
 
     override fun registrar(instance: Any) {
-        val scope = Kernel.pluginScopeFactory.acquire()
+        val scope = Kernel.pluginScopeFactory.acquire(instance)
         scope.eventbus().subscribe(instance)
     }
 }

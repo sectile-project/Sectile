@@ -1,46 +1,33 @@
 package dev.sectile.microkernel.plugin.scope.provider
 
-import dev.sectile.kernel.Kernel
 import dev.sectile.kernel.event.EventBus
 import dev.sectile.kernel.event.Subscription
 import dev.sectile.kernel.event.handler.EventHandler
 import dev.sectile.kernel.event.handler.ListenerPhase
 import dev.sectile.kernel.plugin.scope.provider.CloseableDependencyProvider
-import dev.sectile.kernel.plugin.scope.provider.LazyProvider
 import dev.sectile.kernel.plugin.scope.provider.ProtectedDependencyProvider
-import java.util.*
+import dev.sectile.kernel.plugin.scope.provider.ProtectedLazyProvider
+import java.util.Collections
 
 class ScopedEventBusProvider(
     private val delegate: EventBus,
     val subscriptions: MutableList<Subscription> = Collections.synchronizedList(mutableListOf()),
-
     override val type: Class<EventBus> = EventBus::class.java,
 ) : EventBus,
     CloseableDependencyProvider<EventBus>,
     ProtectedDependencyProvider {
 
     companion object {
-        fun fromLazy(): LazyProvider<EventBus> {
-            val supplier: () -> EventBus = { ScopedEventBusProvider(Kernel.bus) }
-
-            return LazyProvider(
-                type = EventBus::class.java,
-                supplier = supplier,
-            )
-        }
+        fun fromLazy(delegate: EventBus): ProtectedLazyProvider<EventBus> = ProtectedLazyProvider(EventBus::class.java) { ScopedEventBusProvider(delegate) }
     }
 
     private fun addSubscription(subscription: Subscription) {
-        if (!subscription.handlers.isEmpty()) {
-            this.subscriptions.add(subscription)
+        if (subscription.handlers.isNotEmpty()) {
+            subscriptions.add(subscription)
         }
     }
 
-    override fun subscribe(listener: Any): Subscription {
-        val subscription = delegate.subscribe(listener)
-        addSubscription(subscription)
-        return subscription
-    }
+    override fun subscribe(listener: Any): Subscription = delegate.subscribe(listener).also(::addSubscription)
 
     override fun <T : Any> subscribe(
         eventClass: Class<T>,
@@ -48,17 +35,9 @@ class ScopedEventBusProvider(
         priority: Int,
         phase: ListenerPhase,
         block: (T) -> Unit,
-    ): Subscription {
-        val subscription = delegate.subscribe(eventClass, ignoreCancelled, priority, phase, block)
-        addSubscription(subscription)
-        return subscription
-    }
+    ): Subscription = delegate.subscribe(eventClass, ignoreCancelled, priority, phase, block).also(::addSubscription)
 
-    override fun subscribe(handler: EventHandler): Subscription {
-        val subscription = delegate.subscribe(handler)
-        addSubscription(subscription)
-        return subscription
-    }
+    override fun subscribe(handler: EventHandler): Subscription = delegate.subscribe(handler).also(::addSubscription)
 
     override fun unsubscribe(subscription: Subscription) {
         subscription.unsubscribe()
@@ -69,15 +48,16 @@ class ScopedEventBusProvider(
         delegate.publish(event)
     }
 
-    override fun clear() {
-        for (subscription in subscriptions) {
-            subscription.unsubscribe()
+    fun clear() {
+        val snapshot = synchronized(subscriptions) {
+            subscriptions.toList().also { subscriptions.clear() }
         }
+        snapshot.forEach { it.unsubscribe() }
     }
 
     override fun provide(): EventBus = this
 
     override fun close() {
-        this.clear()
+        clear()
     }
 }

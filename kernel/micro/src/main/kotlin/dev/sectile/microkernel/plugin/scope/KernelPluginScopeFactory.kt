@@ -1,19 +1,17 @@
 package dev.sectile.microkernel.plugin.scope
 
+import dev.sectile.kernel.plugin.model.PluginId
 import dev.sectile.kernel.plugin.scope.PluginScope
 import dev.sectile.kernel.plugin.scope.PluginScopeFactory
 import dev.sectile.kernel.plugin.scope.provider.DependencyProvider
 import dev.sectile.microkernel.plugin.classloading.PluginClassLoader
-import dev.sectile.microkernel.plugin.scope.provider.ScopedEventBusProvider
+import java.util.concurrent.CopyOnWriteArrayList
 
 object KernelPluginScopeFactory : PluginScopeFactory {
-    private val defaultDependencyProviders: MutableList<DependencyProvider<*>> =
-        mutableListOf(
-            ScopedEventBusProvider.fromLazy(),
-        )
+    private val defaultDependencyProviders = CopyOnWriteArrayList<() -> DependencyProvider<*>>()
 
-    fun registerDefaultProvider(provider: DependencyProvider<*>) {
-        defaultDependencyProviders.add(provider)
+    fun registerDefaultProvider(factory: () -> DependencyProvider<*>) {
+        defaultDependencyProviders.add(factory)
     }
 
     override fun acquire(): PluginScope {
@@ -21,12 +19,27 @@ object KernelPluginScopeFactory : PluginScopeFactory {
         if (classLoader !is PluginClassLoader) {
             throw IllegalStateException("Attempted to acquire a plugin scope from a non-plugin thread/context")
         }
-        return PluginsScopeContainer.getOrCreateScope(classLoader) { create() }
+        return acquire(classLoader)
     }
 
-    override fun create(): PluginScope {
-        val kernelPluginScope = KernelPluginScope()
-        defaultDependencyProviders.forEach { provider -> kernelPluginScope.put(provider) }
-        return kernelPluginScope
+    override fun acquire(owner: Any): PluginScope {
+        val ownerLoader = owner.javaClass.classLoader
+        if (ownerLoader is PluginClassLoader) {
+            return acquire(ownerLoader)
+        }
+        return acquire()
+    }
+
+    override fun acquire(classLoader: ClassLoader): PluginScope {
+        if (classLoader !is PluginClassLoader) {
+            throw IllegalStateException("Attempted to acquire a plugin scope from non-plugin classloader: $classLoader")
+        }
+        return PluginsScopeContainer.getOrCreateScope(classLoader) { create(classLoader.id) }
+    }
+
+    internal fun create(pluginId: PluginId? = null): PluginScope {
+        val scope = KernelPluginScope(pluginId)
+        defaultDependencyProviders.forEach { factory -> scope.put(factory()) }
+        return scope
     }
 }

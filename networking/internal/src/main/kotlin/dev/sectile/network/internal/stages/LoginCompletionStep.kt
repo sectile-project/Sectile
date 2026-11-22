@@ -1,6 +1,5 @@
 package dev.sectile.network.internal.stages
 
-import dev.sectile.network.api.player.LoginHooks
 import dev.sectile.network.api.player.SimplePlayerAuthentication
 import dev.sectile.network.api.player.connection.ConnectionStage
 import dev.sectile.network.api.player.stage.StageSteps
@@ -58,7 +57,6 @@ internal object LoginNotifyStep : StageEntryStep {
     override fun run(context: StageContext, next: () -> Unit) {
         val authentication = context.connection.authentication
         if (authentication != null) {
-            LoginHooks.onLoginComplete?.invoke(context.connection, authentication)
         }
 
         next()

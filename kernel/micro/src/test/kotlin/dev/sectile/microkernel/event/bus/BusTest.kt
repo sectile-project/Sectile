@@ -1,10 +1,13 @@
 package dev.sectile.microkernel.event.bus
 
 import dev.sectile.kernel.event.Cancellable
+import dev.sectile.kernel.event.EventBus
 import dev.sectile.kernel.event.Listener
 import dev.sectile.kernel.event.handler.ListenerPhase
 import dev.sectile.kernel.event.subscribe
 import dev.sectile.microkernel.logger.PrintlnLogger
+import dev.sectile.microkernel.plugin.scope.KernelPluginScope
+import dev.sectile.microkernel.plugin.scope.provider.ScopedEventBusProvider
 import org.junit.jupiter.api.Assertions.assertTrue
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -90,6 +93,60 @@ class BusTest {
         eventBus.publish(DamageEvent(10.0))
         assertFalse(normalListenerRan, "Normal listeners should skip cancelled events")
         assertTrue(ignoreCancelledListenerRan, "Listeners with ignoreCancelled=true must run")
+    }
+
+    @Test
+    fun `should keep remaining phase listeners when one phase unsubscribes`() {
+        val eventBus = DefaultEventBus(PrintlnLogger())
+        var defaultCount = 0
+
+        val early = eventBus.subscribe<UserJoinEvent>(ListenerPhase.EARLY) { }
+        val default = eventBus.subscribe<UserJoinEvent>(ListenerPhase.DEFAULT) { defaultCount++ }
+
+        assertEquals(1, eventBus.size())
+
+        early.unsubscribe()
+        assertEquals(1, eventBus.size())
+
+        eventBus.publish(UserJoinEvent("Alice"))
+        assertEquals(1, defaultCount)
+
+        default.unsubscribe()
+        assertEquals(0, eventBus.size())
+    }
+
+    @Test
+    fun `closing one plugin scope only unsubscribes its own listeners across phases`() {
+        val eventBus = DefaultEventBus(PrintlnLogger())
+        val received = mutableListOf<String>()
+
+        eventBus.subscribe<ChatEvent>(ListenerPhase.EARLY) { received.add("root:${it.message}") }
+
+        val scopeA = KernelPluginScope().apply {
+            put(ScopedEventBusProvider.fromLazy(eventBus))
+        }
+        val scopeB = KernelPluginScope().apply {
+            put(ScopedEventBusProvider.fromLazy(eventBus))
+        }
+
+        val busA = requireNotNull(scopeA[EventBus::class.java])
+        val busB = requireNotNull(scopeB[EventBus::class.java])
+
+        busA.subscribe<ChatEvent>(ListenerPhase.DEFAULT) { received.add("a-default:${it.message}") }
+        busA.subscribe<ChatEvent>(ListenerPhase.LATE) { received.add("a-late:${it.message}") }
+        busB.subscribe<ChatEvent>(ListenerPhase.DEFAULT) { received.add("b-default:${it.message}") }
+
+        eventBus.publish(ChatEvent("1"))
+        assertEquals(listOf("root:1", "a-default:1", "b-default:1", "a-late:1"), received)
+
+        received.clear()
+        scopeA.close()
+
+        eventBus.publish(ChatEvent("2"))
+        assertEquals(listOf("root:2", "b-default:2"), received)
+
+        scopeB.close()
+        assertEquals(1, eventBus.size())
     }
 
     // Example events

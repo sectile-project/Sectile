@@ -162,6 +162,7 @@ class DefaultPackageScanner(
     ) {
         val connection = url.openConnection()
         if (connection !is JarURLConnection) return
+        connection.useCaches = false
 
         connection.jarFile.use { jar ->
             val prefix = "$rootPath/"

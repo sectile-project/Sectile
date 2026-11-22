@@ -10,4 +10,8 @@ interface PluginScope {
     fun <T : Any> put(provider: DependencyProvider<T>)
 
     fun remove(type: Class<*>): DependencyProvider<*>?
+
+    fun onClose(action: () -> Unit)
+
+    fun onClose(closeable: AutoCloseable) = onClose { closeable.close() }
 }

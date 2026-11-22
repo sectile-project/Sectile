@@ -2,7 +2,6 @@ package dev.sectile.network.internal.stages
 
 import dev.sectile.kernel.logger.Logger
 import dev.sectile.network.api.packet.InboundPacket
-import dev.sectile.network.api.player.LoginHooks
 import dev.sectile.network.api.player.ScheduledTask
 import dev.sectile.network.api.player.connection.ConnectionCloseCode
 import dev.sectile.network.api.player.connection.ConnectionKey
@@ -269,7 +268,6 @@ internal class StageContext(
      * @param reason translation key of the reason shown to the client.
      */
     fun reject(reason: String) {
-        LoginHooks.onLoginFailed?.invoke(connection, reason)
         connection.disconnect(reason)
     }
 
@@ -281,7 +279,6 @@ internal class StageContext(
      */
     fun reject(code: ConnectionCloseCode, reason: String) {
         logger.info("[${connection.getIp()}] Connection rejected: $reason")
-        LoginHooks.onLoginFailed?.invoke(connection, reason)
         connection.close(code, DisconnectSupport.reasonEncoder?.invoke(reason))
     }
 

@@ -11,15 +11,25 @@ import dev.sectile.boostrap.logger.LoggersLoader
 import dev.sectile.boostrap.network.loadNetwork
 import dev.sectile.boostrap.plugin.loadPluginConfig
 import dev.sectile.engine.api.Engine
+import dev.sectile.engine.api.command.CommandRegistry
+import dev.sectile.engine.api.world.WorldRegistry
 import dev.sectile.engine.command.CommandBootstrap
 import dev.sectile.engine.command.DefaultCommandRegistry
 import dev.sectile.engine.command.scope.ScopedCommandRegistryProvider
 import dev.sectile.engine.internal.registry.InternalPlayerRegistry
 import dev.sectile.engine.internal.registry.InternalWorldRegistry
+import dev.sectile.engine.internal.scope.ScopedWorldRegistryProvider
 import dev.sectile.engine.world.WorldBootstrap
 import dev.sectile.kernel.config.ConfigServiceRegistry
+import dev.sectile.kernel.plugin.scope.provider.ProtectedLazyProvider
 import dev.sectile.microkernel.Microkernel
 import dev.sectile.microkernel.plugin.scope.KernelPluginScopeFactory
+import dev.sectile.network.api.NetworkConnector
+import dev.sectile.network.api.packet.handler.PacketHandlerRegistry
+import dev.sectile.network.api.player.stage.StageHookRegistry
+import dev.sectile.network.api.player.stage.StageHooks
+import dev.sectile.network.internal.packet.scope.ScopedPacketHandlerProvider
+import dev.sectile.network.internal.stages.ScopedStageHookProvider
 import dev.sectile.sdk.bundled.config.json.JsonConfigService
 import dev.sectile.sdk.bundled.config.yaml.YamlConfigService
 import dev.sectile.sdk.bundled.scanner.ScannerProvider
@@ -34,13 +44,13 @@ fun startServer(publicClassLoader: ClassLoader, startTime: Long) {
 
     val pluginStarter = Microkernel.init(logger, loadPluginConfig(configService), publicClassLoader)
 
-    startEngine()
+    val commandRegistry = startEngine()
     startSDK()
 
     pluginStarter.run()
 
     val console = loggersLoader.resolveConsole()
-    registerBuiltinCommands(console)
+    registerBuiltinCommands(console, commandRegistry)
 
     loadNetwork(configService, logger)
     WorldBootstrap.init(logger)
@@ -52,16 +62,32 @@ fun startServer(publicClassLoader: ClassLoader, startTime: Long) {
 }
 
 private fun startSDK() {
-    KernelPluginScopeFactory.registerDefaultProvider(ScannerProvider())
+    KernelPluginScopeFactory.registerDefaultProvider { ScannerProvider() }
+    KernelPluginScopeFactory.registerDefaultProvider {
+        ProtectedLazyProvider(PacketHandlerRegistry::class.java) {
+            ScopedPacketHandlerProvider(NetworkConnector.packetHandlers)
+        }
+    }
+    KernelPluginScopeFactory.registerDefaultProvider {
+        ProtectedLazyProvider(StageHookRegistry::class.java) {
+            ScopedStageHookProvider(StageHooks)
+        }
+    }
 }
 
-private fun startEngine() {
-    Engine.init(InternalPlayerRegistry, DefaultCommandRegistry(), InternalWorldRegistry)
-    KernelPluginScopeFactory.registerDefaultProvider(ScopedCommandRegistryProvider(Engine.commands))
+private fun startEngine(): CommandRegistry {
+    val commandRegistry = DefaultCommandRegistry()
+    Engine.init(InternalPlayerRegistry, commandRegistry, InternalWorldRegistry)
+    KernelPluginScopeFactory.registerDefaultProvider {
+        ProtectedLazyProvider(CommandRegistry::class.java) { ScopedCommandRegistryProvider(commandRegistry) }
+    }
+    KernelPluginScopeFactory.registerDefaultProvider {
+        ProtectedLazyProvider(WorldRegistry::class.java) { ScopedWorldRegistryProvider(InternalWorldRegistry) }
+    }
+    return commandRegistry
 }
 
-private fun registerBuiltinCommands(console: Console?) {
-    val registry = Engine.commands
+private fun registerBuiltinCommands(console: Console?, registry: CommandRegistry) {
     registry.register(
         HelpCommand(registry),
         WhereAmICommand(),

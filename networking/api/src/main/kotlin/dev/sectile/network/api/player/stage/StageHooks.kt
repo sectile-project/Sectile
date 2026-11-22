@@ -25,7 +25,26 @@ import java.util.concurrent.CopyOnWriteArrayList
  * When several hooks are registered on the same point they run in registration order and the
  * first one that does not return [StepDecision.Continue] wins: the hooks after it do not run.
  */
-object StageHooks {
+interface StageHookRegistration {
+
+    fun unregister()
+}
+
+interface StageHookRegistry {
+
+    fun before(point: StepPoint, hook: StageHook): StageHookRegistration
+
+    fun after(point: StepPoint, hook: StageHook): StageHookRegistration
+
+    fun beforeEveryStep(hook: StageHook): StageHookRegistration
+
+    fun afterEveryStep(hook: StageHook): StageHookRegistration
+}
+
+/**
+ * Extension point for plugins to intercept login and connection lifecycle steps.
+ */
+object StageHooks : StageHookRegistry {
 
     /** Hooks that run before a step, indexed by point. */
     private val beforeHooks = ConcurrentHashMap<StepPoint, CopyOnWriteArrayList<StageHook>>()
@@ -39,32 +58,45 @@ object StageHooks {
     /** Hooks that run after every step of every stage. */
     private val afterEveryStep = CopyOnWriteArrayList<StageHook>()
 
-    /**
-     * Registers a hook that runs before the step of [point].
-     */
-    fun before(point: StepPoint, hook: StageHook) {
-        beforeHooks.computeIfAbsent(point) { CopyOnWriteArrayList() }.add(hook)
+    override fun before(point: StepPoint, hook: StageHook): StageHookRegistration {
+        val hooks = beforeHooks.computeIfAbsent(point) { CopyOnWriteArrayList() }
+        hooks.add(hook)
+        return registration { hooks.remove(hook) }
     }
 
-    /**
-     * Registers a hook that runs after the step of [point] finished.
-     */
-    fun after(point: StepPoint, hook: StageHook) {
-        afterHooks.computeIfAbsent(point) { CopyOnWriteArrayList() }.add(hook)
+    override fun after(point: StepPoint, hook: StageHook): StageHookRegistration {
+        val hooks = afterHooks.computeIfAbsent(point) { CopyOnWriteArrayList() }
+        hooks.add(hook)
+        return registration { hooks.remove(hook) }
     }
 
-    /**
-     * Registers a hook that runs before every step of every stage.
-     */
-    fun beforeEveryStep(hook: StageHook) {
+    override fun beforeEveryStep(hook: StageHook): StageHookRegistration {
         beforeEveryStep.add(hook)
+        return registration { beforeEveryStep.remove(hook) }
     }
 
-    /**
-     * Registers a hook that runs after every step of every stage.
-     */
-    fun afterEveryStep(hook: StageHook) {
+    override fun afterEveryStep(hook: StageHook): StageHookRegistration {
         afterEveryStep.add(hook)
+        return registration { afterEveryStep.remove(hook) }
+    }
+
+    private fun registration(onUnregister: () -> Unit): StageHookRegistration = object : StageHookRegistration {
+        @Volatile
+        private var active = true
+
+        override fun unregister() {
+            val shouldRemove = synchronized(this) {
+                if (!active) {
+                    false
+                } else {
+                    active = false
+                    true
+                }
+            }
+            if (shouldRemove) {
+                onUnregister()
+            }
+        }
     }
 
     /**

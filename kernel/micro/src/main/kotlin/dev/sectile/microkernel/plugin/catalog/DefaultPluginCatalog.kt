@@ -1,6 +1,7 @@
 package dev.sectile.microkernel.plugin.catalog
 
 import dev.sectile.kernel.plugin.exception.PluginDependencyException
+import dev.sectile.kernel.plugin.exception.PluginNotFoundException
 import dev.sectile.kernel.plugin.model.PluginId
 import dev.sectile.kernel.plugin.model.PluginSnapshot
 import dev.sectile.kernel.plugin.model.lifecycle.PluginState
@@ -25,6 +26,16 @@ internal class DefaultPluginCatalog : PluginCatalog {
         }
         return entry
     }
+
+    fun updateCandidate(candidate: PluginCandidate): PluginEntry {
+        val entry = plugins[candidate.id] ?: throw PluginNotFoundException(candidate.id)
+        synchronized(entry) {
+            entry.candidate = candidate
+        }
+        return entry
+    }
+
+    fun remove(id: PluginId): PluginEntry? = plugins.remove(id)
 
     fun entry(id: PluginId): PluginEntry? = plugins[id]
     fun entries(): List<PluginEntry> = plugins.values.toList()

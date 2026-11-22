@@ -23,14 +23,16 @@ internal class PluginScanner(
             }
 
             try {
-                JarFile(file).use { jar ->
-                    candidates.add(PluginCandidate(file, manifestReader.read(jar)))
-                }
+                candidates.add(scanFile(file))
             } catch (e: Exception) {
                 logger.error("Error scanning the file ${file.name}", e)
             }
         }
 
         return candidates
+    }
+
+    fun scanFile(file: File): PluginCandidate = JarFile(file).use { jar ->
+        PluginCandidate(file, manifestReader.read(jar))
     }
 }

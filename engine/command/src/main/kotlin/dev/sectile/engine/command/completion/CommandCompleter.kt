@@ -68,7 +68,7 @@ internal object CommandCompleter {
 
         val arg = command.args.getOrNull(positionalIndex)
         if (arg != null) {
-            collectMatches(arg.completer, sender, rawPrefix, suggestions)
+            collectMatches(command.javaClass.classLoader, arg.completer, sender, rawPrefix, suggestions)
         }
 
         return suggestions.toList()
@@ -121,6 +121,7 @@ internal object CommandCompleter {
     }
 
     private fun collectMatches(
+        classLoader: ClassLoader?,
         completer: (TabContext.() -> Iterable<String>)?,
         sender: CommandSender,
         partial: String,
@@ -128,7 +129,15 @@ internal object CommandCompleter {
     ) {
         if (completer == null) return
         val filter = partial.trim()
-        val raw = TabContext(sender, partial).completer()
+        val thread = Thread.currentThread()
+        val previous = thread.contextClassLoader
+        val switchLoader = classLoader != null && previous !== classLoader
+        if (switchLoader) thread.contextClassLoader = classLoader
+        val raw = try {
+            TabContext(sender, partial).completer()
+        } finally {
+            if (switchLoader) thread.contextClassLoader = previous
+        }
         for (candidate in raw) {
             if (candidate.startsWith(filter, ignoreCase = true)) {
                 out.add(candidate)

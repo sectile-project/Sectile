@@ -5,7 +5,7 @@ import java.util.UUID
 /**
  * Result of player authentication during login.
  *
- * Populated once login completes and delivered to listeners via [LoginHooks].
+ * Populated once login completes.
  */
 interface PlayerAuthentication {
 

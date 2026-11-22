@@ -28,9 +28,23 @@ class ScopedCommandRegistryProvider(
         return registration
     }
 
-    override fun unregister(name: String): Boolean = delegate.unregister(name)
+    override fun unregister(name: String): Boolean {
+        val target = synchronized(registrations) {
+            registrations.firstOrNull { it.command.name.equals(name, ignoreCase = true) }
+                ?.also { registrations.remove(it) }
+        } ?: return false
+        target.unregister()
+        return true
+    }
 
-    override fun unregister(command: Command): Boolean = delegate.unregister(command)
+    override fun unregister(command: Command): Boolean {
+        val target = synchronized(registrations) {
+            registrations.firstOrNull { it.command == command }
+                ?.also { registrations.remove(it) }
+        } ?: return false
+        target.unregister()
+        return true
+    }
 
     override fun resolve(nameOrAlias: String): Command? = delegate.resolve(nameOrAlias)
 

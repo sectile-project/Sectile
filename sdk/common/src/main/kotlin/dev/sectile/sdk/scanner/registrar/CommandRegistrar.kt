@@ -9,7 +9,7 @@ object CommandRegistrar : ObjectRegistrar<Command> {
     override val targetType: Class<Command> = Command::class.java
 
     override fun registrar(instance: Command) {
-        val scope = Kernel.pluginScopeFactory.acquire()
+        val scope = Kernel.pluginScopeFactory.acquire(instance)
         scope.commands().register(instance)
     }
 }

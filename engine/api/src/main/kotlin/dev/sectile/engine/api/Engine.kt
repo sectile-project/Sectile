@@ -1,13 +1,13 @@
 package dev.sectile.engine.api
 
-import dev.sectile.engine.api.command.CommandRegistry
+import dev.sectile.engine.api.command.CommandDispatcher
 import dev.sectile.engine.api.player.PlayerRegistry
-import dev.sectile.engine.api.world.WorldRegistry
+import dev.sectile.engine.api.world.WorldCatalog
 
 class Engine private constructor(
     val players: PlayerRegistry,
-    val commands: CommandRegistry,
-    val worlds: WorldRegistry,
+    val commands: CommandDispatcher,
+    val worlds: WorldCatalog,
 ) {
 
     companion object {
@@ -18,15 +18,15 @@ class Engine private constructor(
             get() = ref ?: error("Engine not initialized.")
 
         val players: PlayerRegistry get() = instance.players
-        val commands: CommandRegistry get() = instance.commands
-        val worlds: WorldRegistry get() = instance.worlds
+        val commands: CommandDispatcher get() = instance.commands
+        val worlds: WorldCatalog get() = instance.worlds
 
         fun isInitialized(): Boolean = ref != null
 
         fun init(
             players: PlayerRegistry,
-            commands: CommandRegistry,
-            worlds: WorldRegistry,
+            commands: CommandDispatcher,
+            worlds: WorldCatalog,
         ) {
             check(ref == null) { "Engine already initialized." }
             ref = Engine(players, commands, worlds)

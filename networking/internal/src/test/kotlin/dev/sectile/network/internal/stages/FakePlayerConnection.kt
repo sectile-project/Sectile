@@ -89,7 +89,7 @@ class FakePlayerConnection : PlayerConnection {
 
     override fun scheduleAtFixedRate(initialDelay: Duration, period: Duration, task: Runnable): ScheduledTask = ScheduledTask { }
 
-    override fun onDisconnect(listener: Runnable) = Unit
+    override fun onDisconnect(listener: Runnable): AutoCloseable = AutoCloseable { }
 
     @Suppress("UNCHECKED_CAST")
     override fun <T : Any> getAttribute(key: ConnectionKey<T>): T? = attributes[key] as? T

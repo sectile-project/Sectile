@@ -1,7 +1,7 @@
 package dev.sectile.engine.command
 
 import dev.sectile.engine.api.Engine
-import dev.sectile.engine.api.command.CommandRegistry
+import dev.sectile.engine.api.command.CommandDispatcher
 import dev.sectile.network.api.NetworkConnector
 import dev.sectile.network.api.packet.handler.on
 import dev.sectile.network.api.player.connection.ConnectionKey
@@ -27,21 +27,21 @@ internal object CommandPacketHandler {
     private val ARG_RATE_LIMIT_KEY =
         ConnectionKey<MutableMap<String, Long>>("engine.command.argValuesRateLimit")
 
-    fun register(registry: CommandRegistry) {
-        registerCommandTreeHook(registry)
-        registerCommandChatHandler(registry)
-        registerArgValuesHandler(registry)
+    fun register(dispatcher: CommandDispatcher) {
+        registerCommandTreeHook(dispatcher)
+        registerCommandChatHandler(dispatcher)
+        registerArgValuesHandler(dispatcher)
     }
 
-    private fun registerCommandTreeHook(registry: CommandRegistry) {
+    private fun registerCommandTreeHook(dispatcher: CommandDispatcher) {
         StageHooks.after(StepPoint(ConnectionStage.POST_LOGIN, StageSteps.POST_LOGIN_WORLD_JOIN)) { ctx ->
             val player = Engine.players.byConnection(ctx.connection) ?: return@after StepDecision.Continue
-            registry.syncCommandTree(player)
+            dispatcher.syncCommandTree(player)
             StepDecision.Continue
         }
     }
 
-    private fun registerCommandChatHandler(registry: CommandRegistry) {
+    private fun registerCommandChatHandler(dispatcher: CommandDispatcher) {
         NetworkConnector.packetHandlers.on(ProtocolPacketTable.CHAT_MESSAGE, ::ChatMessagePacket) { connection, packet ->
             val message = packet.message
             if (message.isNullOrEmpty()) {
@@ -56,11 +56,11 @@ internal object CommandPacketHandler {
             }
 
             val player = Engine.players.byConnection(connection) ?: return@on
-            registry.execute(player, message.substring(1))
+            dispatcher.execute(player, message.substring(1))
         }
     }
 
-    private fun registerArgValuesHandler(registry: CommandRegistry) {
+    private fun registerArgValuesHandler(dispatcher: CommandDispatcher) {
         NetworkConnector.packetHandlers.on(
             ProtocolPacketTable.ARG_VALUES_REQUEST,
             ::ArgValuesRequestPacket,
@@ -78,7 +78,7 @@ internal object CommandPacketHandler {
             if (now - lastRequest < ARG_REQUEST_COOLDOWN_MS) return@on
             rateMap[argTypeId] = now
 
-            val suggestions = registry.completeArgType(player, argTypeId, partial ?: "")
+            val suggestions = dispatcher.completeArgType(player, argTypeId, partial ?: "")
             val truncated = suggestions.size > MAX_WIRE_SUGGESTIONS
             val values = if (truncated) suggestions.take(MAX_WIRE_SUGGESTIONS) else suggestions
 

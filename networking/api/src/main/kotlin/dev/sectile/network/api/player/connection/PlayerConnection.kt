@@ -70,7 +70,7 @@ interface PlayerConnection {
     fun scheduleAtFixedRate(initialDelay: Duration, period: Duration, task: Runnable): ScheduledTask
 
     /** Registers a callback invoked once when the connection closes. */
-    fun onDisconnect(listener: Runnable)
+    fun onDisconnect(listener: Runnable): AutoCloseable
 
     /** Retrieves per-connection state associated with [key], or `null` if absent. */
     fun <T : Any> getAttribute(key: ConnectionKey<T>): T?

@@ -1,10 +1,24 @@
 package dev.sectile.kernel.plugin.scope.provider
 
-class LazyProvider<T : Any>(
+open class LazyProvider<T : Any>(
     override val type: Class<T>,
     supplier: () -> T,
-) : DependencyProvider<T> {
-    private val lazyValue by lazy(supplier)
+) : CloseableDependencyProvider<T> {
+    private val lazyDelegate = lazy(supplier)
 
-    override fun provide(): T = lazyValue
+    override fun provide(): T = lazyDelegate.value
+
+    override fun close() {
+        if (!lazyDelegate.isInitialized()) return
+        when (val value = lazyDelegate.value) {
+            is CloseableDependencyProvider<*> -> value.close()
+            is AutoCloseable -> value.close()
+        }
+    }
 }
+
+class ProtectedLazyProvider<T : Any>(
+    type: Class<T>,
+    supplier: () -> T,
+) : LazyProvider<T>(type, supplier),
+    ProtectedDependencyProvider

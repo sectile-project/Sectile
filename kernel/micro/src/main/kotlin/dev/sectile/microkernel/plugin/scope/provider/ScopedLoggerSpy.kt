@@ -6,13 +6,14 @@ import dev.sectile.kernel.plugin.scope.provider.CloseableDependencyProvider
 import dev.sectile.kernel.plugin.scope.provider.ProtectedDependencyProvider
 import dev.sectile.microkernel.plugin.scope.KernelPluginScope
 import dev.sectile.microkernel.plugin.scope.KernelPluginScopeFactory
-import java.util.*
+import java.util.Collections
+import java.util.concurrent.CopyOnWriteArraySet
 
 object ScopedLoggerSpy : LoggerSpy {
-    private val loggers = Collections.synchronizedSet(mutableSetOf<Logger>())
+    private val loggers = CopyOnWriteArraySet<Logger>()
 
     override fun register(logger: Logger) {
-        val scope = KernelPluginScopeFactory.acquire()
+        val scope = KernelPluginScopeFactory.acquire(logger)
 
         if (loggers.add(logger) && scope is KernelPluginScope) {
             val currentLogger = scope.getProvider(LoggerSpy::class.java)
@@ -20,7 +21,9 @@ object ScopedLoggerSpy : LoggerSpy {
             if (currentLogger is MultipleLoggerSpyHolderProvider) {
                 currentLogger.loggers.add(logger)
             } else {
-                scope.put(MultipleLoggerSpyHolderProvider(this))
+                val holder = MultipleLoggerSpyHolderProvider(this)
+                holder.loggers.add(logger)
+                scope.put(holder)
             }
         }
     }
@@ -41,13 +44,15 @@ object ScopedLoggerSpy : LoggerSpy {
     ) : CloseableDependencyProvider<LoggerSpy>,
         ProtectedDependencyProvider {
 
-        val loggers: MutableSet<Logger> = Collections.synchronizedSet(mutableSetOf<Logger>())
+        val loggers: MutableSet<Logger> = Collections.synchronizedSet(mutableSetOf())
 
         override fun provide(): LoggerSpy = spyScope
 
         override fun close() {
-            spyScope.loggers.removeAll(this.loggers)
-            this.loggers.clear()
+            val snapshot = synchronized(loggers) {
+                loggers.toList().also { loggers.clear() }
+            }
+            spyScope.loggers.removeAll(snapshot.toSet())
         }
     }
 }

@@ -25,6 +25,7 @@ class DefaultCommandRegistry(
     private val commandsByName = ConcurrentHashMap<String, Command>()
     private val aliasesToName = ConcurrentHashMap<String, String>()
     private val completersById = ConcurrentHashMap<String, TabContext.() -> Iterable<String>>()
+    private val keysByCommand = ConcurrentHashMap<Command, Set<String>>()
     private val registrationLock = Any()
 
     init {
@@ -46,11 +47,15 @@ class DefaultCommandRegistry(
         require(name.isNotBlank()) { "Registered command must have a non-blank name." }
 
         synchronized(registrationLock) {
-            commandsByName[name] = command
+            val previous = commandsByName.put(name, command)
+            if (previous != null) {
+                removeAliasesFor(previous)
+                unregisterCommandCompleters(previous)
+            }
             for (alias in command.aliases) {
                 aliasesToName[alias.lowercase(Locale.ROOT)] = name
             }
-            registerCommandCompleters(command, command.name)
+            registerCommandCompleters(command)
         }
 
         syncCommandTreeToAll()
@@ -62,7 +67,7 @@ class DefaultCommandRegistry(
         val removed = synchronized(registrationLock) {
             val command = commandsByName.remove(key) ?: return false
             removeAliasesFor(command)
-            unregisterCommandCompleters(command, command.name)
+            unregisterCommandCompleters(command)
             command
         }
         logger.debug("Unregistered command '/${removed.name}'")
@@ -75,7 +80,7 @@ class DefaultCommandRegistry(
             val removedSuccess = commandsByName.remove(command.name.lowercase(Locale.ROOT), command)
             if (removedSuccess) {
                 removeAliasesFor(command)
-                unregisterCommandCompleters(command, command.name)
+                unregisterCommandCompleters(command)
             }
             removedSuccess
         }
@@ -160,7 +165,9 @@ class DefaultCommandRegistry(
         logger.info("${sender.name} executed command: /$rawCommand")
 
         return try {
-            CommandParser.parseAndExecute(sender, command, tokens)
+            withCommandClassLoader(command.javaClass.classLoader) {
+                CommandParser.parseAndExecute(sender, command, tokens)
+            }
         } catch (ex: IllegalArgumentException) {
             sender.receiveMessage(ex.message ?: "Invalid command arguments.")
             false
@@ -196,25 +203,36 @@ class DefaultCommandRegistry(
         wordIndex = wordIndex,
     )
 
-    private fun registerCommandCompleters(command: Command, path: String) {
-        command.args.forEachIndexed { idx, arg ->
-            val completer = arg.completer ?: return@forEachIndexed
-            completersById.putIfAbsent(CommandTreeBuilder.argTypeIdFor(path, idx, arg), completer)
-        }
-        command.subcommands.values.forEach { sub ->
-            registerCommandCompleters(sub, "$path/${sub.name}")
+    private fun registerCommandCompleters(command: Command) {
+        val keys = LinkedHashSet<String>()
+        registerCommandCompleters(command, command.name, command.javaClass.classLoader, keys)
+        if (keys.isNotEmpty()) {
+            keysByCommand[command] = keys
         }
     }
 
-    private fun unregisterCommandCompleters(command: Command, path: String) {
+    private fun registerCommandCompleters(
+        command: Command,
+        path: String,
+        classLoader: ClassLoader?,
+        registeredKeys: MutableSet<String>,
+    ) {
         command.args.forEachIndexed { idx, arg ->
-            if (arg.typeId == null && arg.completer != null) {
-                completersById.remove(CommandTreeBuilder.argTypeIdFor(path, idx, arg))
+            val completer = arg.completer ?: return@forEachIndexed
+            val key = CommandTreeBuilder.argTypeIdFor(path, idx, arg)
+            if (key in BUILTIN_COMPLETER_KEYS) return@forEachIndexed
+            completersById.putIfAbsent(key) {
+                withCommandClassLoader(classLoader) { completer() }
             }
+            registeredKeys.add(key)
         }
         command.subcommands.values.forEach { sub ->
-            unregisterCommandCompleters(sub, "$path/${sub.name}")
+            registerCommandCompleters(sub, "$path/${sub.name}", classLoader, registeredKeys)
         }
+    }
+
+    private fun unregisterCommandCompleters(command: Command) {
+        keysByCommand.remove(command)?.forEach { completersById.remove(it) }
     }
 
     private fun removeAliasesFor(command: Command) {
@@ -234,6 +252,23 @@ class DefaultCommandRegistry(
             if (unregistered) return
             unregistered = true
             unregister(command)
+        }
+    }
+
+    companion object {
+        private val BUILTIN_COMPLETER_KEYS = setOf("string", "boolean", "player", "world")
+
+        private inline fun <T> withCommandClassLoader(classLoader: ClassLoader?, block: () -> T): T {
+            if (classLoader == null) return block()
+            val thread = Thread.currentThread()
+            val previous = thread.contextClassLoader
+            if (previous === classLoader) return block()
+            thread.contextClassLoader = classLoader
+            return try {
+                block()
+            } finally {
+                thread.contextClassLoader = previous
+            }
         }
     }
 }

@@ -26,4 +26,13 @@ interface PluginLifecycleControl {
         PluginOperationInProgressException::class,
     )
     fun disable(id: PluginId)
+
+    @Throws(
+        PluginNotFoundException::class,
+        PluginTransitionNotAllowedException::class,
+        PluginOperationInProgressException::class,
+    )
+    fun reload(id: PluginId)
+
+    fun reloadAll()
 }

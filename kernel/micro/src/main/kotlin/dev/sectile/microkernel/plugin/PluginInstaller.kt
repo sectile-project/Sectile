@@ -50,7 +50,7 @@ internal class PluginInstaller(
         return selectedCandidates.map { it.id }
     }
 
-    private fun isSelected(candidate: PluginCandidate): Boolean {
+    internal fun isSelected(candidate: PluginCandidate): Boolean {
         val selection = config.selection
         if (selection.mode == KernelPluginConfig.Selection.Mode.ALL) {
             return true
@@ -68,7 +68,7 @@ internal class PluginInstaller(
         }
     }
 
-    private fun validateDuplicateIds(candidates: List<PluginCandidate>) {
+    internal fun validateDuplicateIds(candidates: List<PluginCandidate>) {
         val duplicates =
             candidates
                 .groupBy { it.id }

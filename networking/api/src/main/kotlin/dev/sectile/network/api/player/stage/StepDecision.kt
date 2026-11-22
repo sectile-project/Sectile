@@ -16,7 +16,6 @@ sealed interface StepDecision {
      * The connection is closed with [reason].
      *
      * The server sends the disconnect packet to the client and notifies
-     * [dev.sectile.network.api.player.LoginHooks.onLoginFailed].
      */
     data class Reject(val reason: String) : StepDecision
 

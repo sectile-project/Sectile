@@ -251,15 +251,17 @@ class NettyPlayerConnection(
         return scheduled
     }
 
-    override fun onDisconnect(listener: Runnable) {
+    override fun onDisconnect(listener: Runnable): AutoCloseable {
         if (disconnectNotified.get()) {
             listener.run()
-            return
+            return AutoCloseable { }
         }
         disconnectListeners.add(listener)
         if (disconnectNotified.get() && disconnectListeners.remove(listener)) {
             listener.run()
+            return AutoCloseable { }
         }
+        return AutoCloseable { disconnectListeners.remove(listener) }
     }
 
     @Suppress("UNCHECKED_CAST")
