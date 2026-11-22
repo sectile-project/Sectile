@@ -13,7 +13,7 @@ import dev.sectile.network.internal.stages.StagePacketStep
 import dev.sectile.network.internal.stages.onClientDisconnect
 import dev.sectile.network.protocol.ProtocolPacketTable
 import dev.sectile.network.protocol.ProtocolSettings
-import dev.sectile.network.protocol.connection.ConnectPacket
+import dev.sectile.network.protocol.connection.inbound.ConnectPacket
 import java.time.Duration
 
 /**

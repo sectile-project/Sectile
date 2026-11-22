@@ -13,9 +13,9 @@ import dev.sectile.network.internal.player.DisconnectSupport
 import dev.sectile.network.internal.quic.QuicProtocol
 import dev.sectile.network.internal.stages.StageEnvironment
 import dev.sectile.network.internal.stages.StageRegistry
-import dev.sectile.network.protocol.connection.ServerDisconnectPacket
-import dev.sectile.network.protocol.enums.DisconnectType
-import dev.sectile.network.protocol.structures.FormattedMessage
+import dev.sectile.network.protocol.connection.enums.DisconnectType
+import dev.sectile.network.protocol.connection.outbound.ServerDisconnectPacket
+import dev.sectile.network.protocol.shared.text.FormattedMessage
 import io.netty.buffer.Unpooled
 import java.util.EnumMap
 import java.util.concurrent.CompletableFuture

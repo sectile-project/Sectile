@@ -6,7 +6,7 @@ import dev.sectile.network.internal.auth.NetworkAuth
 import dev.sectile.network.internal.config.AuthConfig
 import dev.sectile.network.internal.stages.StageContext
 import dev.sectile.network.internal.stages.StageEntryStep
-import dev.sectile.network.protocol.enums.ClientType
+import dev.sectile.network.protocol.connection.enums.ClientType
 import java.util.UUID
 
 /**

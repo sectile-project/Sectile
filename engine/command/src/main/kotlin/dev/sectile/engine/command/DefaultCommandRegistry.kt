@@ -14,7 +14,7 @@ import dev.sectile.engine.command.tree.CommandTreeBuilder
 import dev.sectile.kernel.Kernel
 import dev.sectile.kernel.logger.Logger
 import dev.sectile.network.api.NetworkConnector
-import dev.sectile.network.protocol.interfaceui.ArgCacheInvalidationPacket
+import dev.sectile.network.protocol.command.outbound.ArgCacheInvalidationPacket
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 

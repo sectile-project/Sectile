@@ -12,10 +12,10 @@ import dev.sectile.network.internal.stages.StagePacketStep
 import dev.sectile.network.internal.stages.onClientDisconnect
 import dev.sectile.network.internal.stages.onViewRadius
 import dev.sectile.network.protocol.ProtocolPacketTable
-import dev.sectile.network.protocol.connection.NetworkTickPacket
-import dev.sectile.network.protocol.connection.PingPacket
-import dev.sectile.network.protocol.player.ClientReadyPacket
-import dev.sectile.network.protocol.structures.InstantData
+import dev.sectile.network.protocol.connection.outbound.NetworkTickPacket
+import dev.sectile.network.protocol.connection.outbound.PingPacket
+import dev.sectile.network.protocol.player.inbound.ClientReadyPacket
+import dev.sectile.network.protocol.shared.InstantData
 import java.time.Duration
 import java.time.Instant
 

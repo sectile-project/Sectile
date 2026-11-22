@@ -10,7 +10,7 @@ import dev.sectile.network.internal.auth.TestLogger
 import dev.sectile.network.internal.config.AuthConfig
 import dev.sectile.network.internal.config.AuthMode
 import dev.sectile.network.internal.config.NetworkConfig
-import dev.sectile.network.protocol.connection.ConnectPacket
+import dev.sectile.network.protocol.connection.inbound.ConnectPacket
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull

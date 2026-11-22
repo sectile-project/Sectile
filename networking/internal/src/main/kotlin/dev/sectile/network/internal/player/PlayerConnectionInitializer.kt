@@ -15,11 +15,11 @@ import dev.sectile.network.internal.quic.QuicClose
 import dev.sectile.network.internal.quic.QuicProtocol
 import dev.sectile.network.internal.quic.QuicTransport
 import dev.sectile.network.protocol.ProtocolPacketTable
-import dev.sectile.network.protocol.connection.ServerDisconnectPacket
-import dev.sectile.network.protocol.enums.DisconnectType
-import dev.sectile.network.protocol.stream.StreamOpenPacket
-import dev.sectile.network.protocol.stream.StreamOpenResponsePacket
-import dev.sectile.network.protocol.structures.FormattedMessage
+import dev.sectile.network.protocol.connection.enums.DisconnectType
+import dev.sectile.network.protocol.connection.outbound.ServerDisconnectPacket
+import dev.sectile.network.protocol.player.inbound.StreamOpenPacket
+import dev.sectile.network.protocol.player.outbound.StreamOpenResponsePacket
+import dev.sectile.network.protocol.shared.text.FormattedMessage
 import io.netty.channel.Channel
 import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext

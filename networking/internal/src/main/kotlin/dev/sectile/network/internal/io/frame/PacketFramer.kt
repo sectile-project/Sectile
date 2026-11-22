@@ -7,7 +7,7 @@ import dev.sectile.network.internal.io.ProtocolException
 import dev.sectile.network.internal.io.compression.PacketCompression
 import dev.sectile.network.internal.packet.buffer.NettyWriteBuffer
 import dev.sectile.network.internal.quic.QuicProtocol
-import dev.sectile.network.protocol.data.DataSize
+import dev.sectile.network.protocol.DataSize
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 

@@ -52,11 +52,11 @@ internal fun authCommand(): Command = command("auth", "Manage Hytale server auth
     }
 }
 
-private fun minutesUntilExpire(isoTime: String?): Long {
-    return if (isoTime == null) 0L else {
-        max(
-            0L,
-            (OffsetDateTime.parse(isoTime).toInstant().toEpochMilli() - System.currentTimeMillis()) / 60_000L
-        )
-    }
+private fun minutesUntilExpire(isoTime: String?): Long = if (isoTime == null) {
+    0L
+} else {
+    max(
+        0L,
+        (OffsetDateTime.parse(isoTime).toInstant().toEpochMilli() - System.currentTimeMillis()) / 60_000L,
+    )
 }

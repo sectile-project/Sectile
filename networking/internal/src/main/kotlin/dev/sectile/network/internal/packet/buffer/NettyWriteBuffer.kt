@@ -1,14 +1,10 @@
 package dev.sectile.network.internal.packet.buffer
 
 import dev.sectile.network.api.buffer.WriteBuffer
-import dev.sectile.network.protocol.VarInt
+import dev.sectile.network.protocol.ProtocolFormatException
 import io.netty.buffer.ByteBuf
 import java.util.UUID
 
-/**
- * Writer backed by a Netty [ByteBuf] following Hytale protocol semantics:
- * little-endian multi-byte integers and RFC 4122 (big-endian) UUIDs.
- */
 class NettyWriteBuffer(
     private val buf: ByteBuf,
 ) : WriteBuffer {
@@ -73,7 +69,62 @@ class NettyWriteBuffer(
     }
 
     override fun writeVarInt(value: Int) {
-        VarInt.write(this, value)
+        if (value < 0) throw ProtocolFormatException("VarInt cannot encode negative values: $value")
+        var remaining = value
+        while (remaining and 0x7F.inv() != 0) {
+            buf.writeByte((remaining and 0x7F) or 0x80)
+            remaining = remaining ushr 7
+        }
+        buf.writeByte(remaining)
+    }
+
+    override fun writeVarBytes(bytes: ByteArray) {
+        writeVarInt(bytes.size)
+        writeBytes(bytes)
+    }
+
+    override fun writeVarAsciiString(value: String, maxLength: Int) {
+        val bytes = encodeAscii(value)
+        if (bytes.size > maxLength) {
+            throw ProtocolFormatException("String too long: ${bytes.size} > $maxLength")
+        }
+        writeVarInt(bytes.size)
+        buf.writeBytes(bytes)
+    }
+
+    override fun writeVarByteArray(bytes: ByteArray, maxLength: Int) {
+        if (bytes.size > maxLength) {
+            throw ProtocolFormatException("Byte array too long: ${bytes.size} > $maxLength")
+        }
+        writeVarInt(bytes.size)
+        buf.writeBytes(bytes)
+    }
+
+    override fun writeFixedAscii(value: String, length: Int) {
+        val bytes = encodeAscii(value)
+        if (bytes.size > length) {
+            throw ProtocolFormatException("String too long: ${bytes.size} > $length")
+        }
+        buf.writeBytes(bytes)
+        if (bytes.size < length) skip(length - bytes.size)
+    }
+
+    override fun writeVarString(value: String, maxLength: Int) {
+        val bytes = value.toByteArray(Charsets.UTF_8)
+        if (bytes.size > maxLength) {
+            throw ProtocolFormatException("String too long: ${bytes.size} > $maxLength")
+        }
+        writeVarInt(bytes.size)
+        buf.writeBytes(bytes)
+    }
+
+    fun encodeAscii(value: String): ByteArray {
+        val bytes = ByteArray(value.length)
+        for (i in value.indices) {
+            val c = value[i].code
+            bytes[i] = if (c <= 0x7F) c.toByte() else '?'.code.toByte()
+        }
+        return bytes
     }
 
     override fun writeIntAt(index: Int, value: Int) {

@@ -2,18 +2,18 @@ package dev.sectile.isolated;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
-import java.util.stream.Stream;
 
 public final class IsolatedLauncher {
 
@@ -41,32 +41,14 @@ public final class IsolatedLauncher {
     thread.setContextClassLoader(internalLoader);
 
     try {
-      launchEntrypoint(internalLoader, publicLoader, time);
+      MethodHandles.publicLookup()
+          .findStatic(
+              Class.forName(ENTRYPOINT_CLASS, true, internalLoader),
+              MAIN_FUNCTION,
+              MethodType.methodType(Void.TYPE, ClassLoader.class, Long.TYPE))
+          .invokeExact((ClassLoader) publicLoader, time);
     } finally {
       thread.setContextClassLoader(previous);
-    }
-  }
-
-  private static void launchEntrypoint(
-      final ClassLoader internalLoader, final ClassLoader publicLoader, final long startTime)
-      throws Throwable {
-    final Class<?> entrypointClass = Class.forName(ENTRYPOINT_CLASS, true, internalLoader);
-
-    final Method mainMethod =
-        entrypointClass.getMethod(MAIN_FUNCTION, ClassLoader.class, long.class);
-
-    if (!Modifier.isStatic(mainMethod.getModifiers())) {
-      throw new IllegalStateException(
-          "Entrypoint "
-              + MAIN_FUNCTION
-              + "(ClassLoader[] publicClassLoader, long startTime) must be static: "
-              + ENTRYPOINT_CLASS);
-    }
-
-    try {
-      mainMethod.invoke(null, publicLoader, startTime);
-    } catch (InvocationTargetException ex) {
-      throw ex.getCause();
     }
   }
 
@@ -103,37 +85,52 @@ public final class IsolatedLauncher {
         return publicJar;
       }
 
-      deleteFilesInCache();
-
       final JarEntry entry = jarFile.getJarEntry(EMBEDDED_PUBLIC_JAR);
       if (entry == null) {
         throw new IllegalStateException("Missing embedded jar. Corrupted jar");
       }
 
       Files.createDirectories(CACHE_PATH);
-      try (InputStream input = jarFile.getInputStream(entry)) {
-        Files.copy(input, publicJar);
+      deleteStaleJarsInCache();
+
+      // Copy to a temp file first, then move atomically, so a crash or a concurrent
+      // instance can never leave a truncated jar at the final path.
+      final Path tmp = Files.createTempFile(CACHE_PATH, "extract-", ".tmp");
+      try {
+        try (InputStream input = jarFile.getInputStream(entry)) {
+          Files.copy(input, tmp, StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        try {
+          Files.move(tmp, publicJar, StandardCopyOption.ATOMIC_MOVE);
+        } catch (IOException e) {
+          // Another instance may have finished first (e.g. Windows can't replace an existing file).
+          if (!Files.isRegularFile(publicJar)) {
+            throw e;
+          }
+        }
+      } finally {
+        Files.deleteIfExists(tmp);
       }
 
       return publicJar;
     }
   }
 
-  private static void deleteFilesInCache() throws IOException {
-    if (!Files.exists(CACHE_PATH)) {
+  private static void deleteStaleJarsInCache() throws IOException {
+    if (!Files.isDirectory(CACHE_PATH)) {
       return;
     }
 
-    try (final Stream<Path> paths = Files.walk(CACHE_PATH, 1)) {
-      paths
-          .filter(Files::isRegularFile)
-          .forEach(
-              path -> {
-                try {
-                  Files.delete(path);
-                } catch (Exception _) {
-                }
-              });
+    // Only *.jar: leaves in-progress .tmp files of other instances untouched.
+    try (DirectoryStream<Path> paths = Files.newDirectoryStream(CACHE_PATH, "*.jar")) {
+      for (final Path path : paths) {
+        try {
+          Files.deleteIfExists(path);
+        } catch (IOException _) {
+          // Best effort (e.g. jar still locked by another process on Windows).
+        }
+      }
     }
   }
 }

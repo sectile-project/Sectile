@@ -1,6 +1,6 @@
 package dev.sectile.network.internal.stages
 
-import dev.sectile.network.protocol.enums.ClientType
+import dev.sectile.network.protocol.connection.enums.ClientType
 import java.util.UUID
 
 /**

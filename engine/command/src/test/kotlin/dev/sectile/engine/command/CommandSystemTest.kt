@@ -28,9 +28,9 @@ import dev.sectile.network.api.player.connection.ConnectionCloseCode
 import dev.sectile.network.api.player.connection.ConnectionKey
 import dev.sectile.network.api.player.connection.ConnectionStage
 import dev.sectile.network.api.player.connection.PlayerConnection
-import dev.sectile.network.protocol.interfaceui.CommandTreeSyncPacket
-import dev.sectile.network.protocol.packet.server.RawMessagePacket
-import dev.sectile.network.protocol.packet.server.ServerMessagePacket
+import dev.sectile.network.protocol.chat.outbound.RawMessagePacket
+import dev.sectile.network.protocol.chat.outbound.ServerMessagePacket
+import dev.sectile.network.protocol.command.outbound.CommandTreeSyncPacket
 import dev.sectile.sdk.command.argBoolean
 import dev.sectile.sdk.command.argChoices
 import dev.sectile.sdk.command.argEnum
@@ -294,9 +294,6 @@ class CommandSystemTest {
         assertTrue(args.hasNext())
         assertEquals(9, args.remaining())
         assertTrue(args.isValidIndex(0))
-        assertTrue(args.isInvalidIndex(99))
-        assertTrue(args.exists(0))
-        assertFalse(args.exists(99))
         assertEquals("7", args[0])
         assertNull(args[99])
         assertTrue(args.hasFlag("shout"))

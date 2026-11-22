@@ -29,10 +29,6 @@ class Arguments(
 
     fun isValidIndex(idx: Int): Boolean = idx in tokens.indices
 
-    fun isInvalidIndex(idx: Int): Boolean = idx !in tokens.indices
-
-    fun exists(idx: Int): Boolean = idx in tokens.indices
-
     fun hasFlag(name: String, vararg aliases: String): Boolean = normalizeKey(name) in flags || aliases.any { normalizeKey(it) in flags }
 
     fun move(count: Int = 1) {

@@ -13,7 +13,7 @@ import dev.sectile.network.internal.stages.authentication.steps.IdentityTokenSte
 import dev.sectile.network.internal.stages.authentication.steps.ServerAuthTokenStep
 import dev.sectile.network.internal.stages.onClientDisconnect
 import dev.sectile.network.protocol.ProtocolPacketTable
-import dev.sectile.network.protocol.auth.AuthTokenPacket
+import dev.sectile.network.protocol.auth.inbound.AuthTokenPacket
 import java.time.Duration
 
 /**

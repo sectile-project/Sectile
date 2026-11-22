@@ -3,9 +3,9 @@ package dev.sectile.network.internal.stages.prelogin.steps
 import dev.sectile.network.api.player.stage.StageSteps
 import dev.sectile.network.internal.stages.StageContext
 import dev.sectile.network.internal.stages.StageEntryStep
-import dev.sectile.network.protocol.assets.DefaultAssetPayloads
-import dev.sectile.network.protocol.interfaceui.ServerInfoPacket
-import dev.sectile.network.protocol.setup.WorldSettingsPacket
+import dev.sectile.network.protocol.asset.DefaultAssetPayloads
+import dev.sectile.network.protocol.connection.outbound.ServerInfoPacket
+import dev.sectile.network.protocol.world.outbound.WorldSettingsPacket
 
 /**
  * Sends the settings of the world and the information of the server.

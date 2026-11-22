@@ -5,7 +5,7 @@ import dev.sectile.network.api.player.stage.StageSteps
 import dev.sectile.network.internal.stages.SessionState
 import dev.sectile.network.internal.stages.StageContext
 import dev.sectile.network.internal.stages.StagePacketStep
-import dev.sectile.network.protocol.setup.SetupFinalizePacket
+import dev.sectile.network.protocol.player.inbound.SetupFinalizePacket
 
 /**
  * Moves the connection to the gameplay stage.

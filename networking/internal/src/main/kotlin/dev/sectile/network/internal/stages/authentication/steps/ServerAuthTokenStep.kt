@@ -7,8 +7,8 @@ import dev.sectile.network.internal.stages.LoginCompletionStep
 import dev.sectile.network.internal.stages.PasswordChallenge
 import dev.sectile.network.internal.stages.StageContext
 import dev.sectile.network.internal.stages.StagePacketStep
-import dev.sectile.network.protocol.auth.AuthTokenPacket
-import dev.sectile.network.protocol.auth.ServerAuthTokenPacket
+import dev.sectile.network.protocol.auth.inbound.AuthTokenPacket
+import dev.sectile.network.protocol.auth.outbound.ServerAuthTokenPacket
 
 /**
  * Exchanges the grant of the client for an access token of the server.

@@ -3,7 +3,7 @@ package dev.sectile.network.api.buffer
 import java.util.UUID
 
 /**
- * Byte writer following Hytale protocol semantics:
+ * Byte writer following protocol semantics:
  * - Multi-byte integers are little-endian.
  * - UUIDs follow RFC 4122 (network byte order / big-endian).
  * - VarInts are canonical (7-bit little-endian groups, max 5 bytes).
@@ -12,43 +12,51 @@ import java.util.UUID
  */
 interface WriteBuffer {
 
-    /** Writes raw bytes. */
     fun writeBytes(bytes: ByteArray)
 
+    fun writeVarAsciiString(value: String, maxLength: Int)
+    fun writeVarByteArray(bytes: ByteArray, maxLength: Int)
+    fun writeFixedAscii(value: String, length: Int)
+    fun writeVarString(value: String, maxLength: Int)
+
+    fun writeVarBytes(bytes: ByteArray)
+
     fun writeBoolean(condition: Boolean)
-
     fun writeByte(value: Byte)
-
     fun writeByte(value: Int)
-
-    /** Writes a little-endian 16-bit integer. */
     fun writeShort(value: Int)
-
-    /** Writes a little-endian 32-bit integer. */
     fun writeInt(value: Int)
-
-    /** Writes a little-endian 64-bit integer. */
+    fun writeIntAt(index: Int, value: Int)
+    fun writeVarInt(value: Int)
     fun writeLong(value: Long)
-
     fun writeFloat(value: Float)
 
     fun writeDouble(value: Double)
 
-    /** Writes an RFC 4122 (big-endian) UUID. */
+    fun reserveOffset(offset: Int = 4): Int {
+        val slot = index
+        skip(offset)
+        return slot
+    }
+
     fun writeUUID(value: UUID)
 
-    /** Writes a canonical VarInt. */
-    fun writeVarInt(value: Int)
-
-    /** Writes a little-endian 32-bit integer at absolute [index] without moving the cursor. */
-    fun writeIntAt(index: Int, value: Int)
-
-    /** Moves the cursor backward by [amountBytes]. */
     fun revert(amountBytes: Int)
-
-    /** Advances the cursor forward by [amountBytes]. */
     fun skip(amountBytes: Int)
 
-    /** Current cursor position. */
     val index: Int
+}
+
+inline fun <T : Any> WriteBuffer.writeSlot(
+    slot: Int,
+    varBlockStart: Int,
+    value: T?,
+    write: (T) -> Unit,
+) {
+    if (value == null) {
+        writeIntAt(slot, -1)
+    } else {
+        writeIntAt(slot, index - varBlockStart)
+        write(value)
+    }
 }

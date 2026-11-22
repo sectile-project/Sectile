@@ -3,10 +3,10 @@ package dev.sectile.engine.command.tree
 import dev.sectile.engine.api.command.Command
 import dev.sectile.engine.api.command.CommandSender
 import dev.sectile.engine.api.command.argument.CommandArg
-import dev.sectile.network.protocol.interfaceui.CommandArgInfo
-import dev.sectile.network.protocol.interfaceui.CommandOptionalArgEntry
-import dev.sectile.network.protocol.interfaceui.CommandTreeEntry
-import dev.sectile.network.protocol.interfaceui.CommandTreeSyncPacket
+import dev.sectile.network.protocol.command.outbound.CommandTreeSyncPacket
+import dev.sectile.network.protocol.command.structures.CommandArgInfo
+import dev.sectile.network.protocol.command.structures.CommandOptionalArgEntry
+import dev.sectile.network.protocol.command.structures.CommandTreeEntry
 
 internal object CommandTreeBuilder {
 

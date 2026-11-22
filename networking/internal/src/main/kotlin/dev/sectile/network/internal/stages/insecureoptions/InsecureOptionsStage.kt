@@ -13,9 +13,9 @@ import dev.sectile.network.internal.stages.StageEnvironment
 import dev.sectile.network.internal.stages.StagePacketStep
 import dev.sectile.network.internal.stages.onClientDisconnect
 import dev.sectile.network.protocol.ProtocolPacketTable
-import dev.sectile.network.protocol.auth.ConnectAcceptPacket
-import dev.sectile.network.protocol.connection.InsecurePlayerOptionsPacket
-import dev.sectile.network.protocol.connection.RequestInsecurePlayerOptionsPacket
+import dev.sectile.network.protocol.auth.outbound.ConnectAcceptPacket
+import dev.sectile.network.protocol.connection.inbound.InsecurePlayerOptionsPacket
+import dev.sectile.network.protocol.connection.outbound.RequestInsecurePlayerOptionsPacket
 import java.time.Duration
 
 /**

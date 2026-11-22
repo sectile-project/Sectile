@@ -7,9 +7,9 @@ import dev.sectile.engine.chat.color.Color
 import dev.sectile.network.api.NetworkConnector
 import dev.sectile.network.api.packet.OutboundPacket
 import dev.sectile.network.api.player.connection.PlayerConnection
-import dev.sectile.network.protocol.packet.server.FormattedMessageData
-import dev.sectile.network.protocol.packet.server.RawMessagePacket
-import dev.sectile.network.protocol.packet.server.ServerMessagePacket
+import dev.sectile.network.protocol.chat.outbound.RawMessagePacket
+import dev.sectile.network.protocol.chat.outbound.ServerMessagePacket
+import dev.sectile.network.protocol.shared.contracts.FormattedMessageData
 
 class Message(
     override var rawText: String? = null,

@@ -4,11 +4,11 @@ import dev.sectile.network.api.player.stage.StageSteps
 import dev.sectile.network.internal.stages.SessionState
 import dev.sectile.network.internal.stages.StageContext
 import dev.sectile.network.internal.stages.StagePacketStep
-import dev.sectile.network.protocol.assets.AssetTypes
-import dev.sectile.network.protocol.setup.RequestAssetsPacket
-import dev.sectile.network.protocol.setup.WorldLoadFinishedPacket
-import dev.sectile.network.protocol.setup.WorldLoadProgressPacket
-import dev.sectile.network.protocol.structures.FormattedMessage
+import dev.sectile.network.protocol.asset.AssetTypes
+import dev.sectile.network.protocol.asset.inbound.RequestAssetsPacket
+import dev.sectile.network.protocol.shared.text.FormattedMessage
+import dev.sectile.network.protocol.world.outbound.WorldLoadFinishedPacket
+import dev.sectile.network.protocol.world.outbound.WorldLoadProgressPacket
 
 /**
  * Delivers the assets the client needs to load the world.

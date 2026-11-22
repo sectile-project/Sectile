@@ -5,7 +5,7 @@ import dev.sectile.network.api.player.stage.StageSteps
 import dev.sectile.network.internal.auth.NetworkAuth
 import dev.sectile.network.internal.stages.StageContext
 import dev.sectile.network.internal.stages.StageEntryStep
-import dev.sectile.network.protocol.auth.AuthGrantPacket
+import dev.sectile.network.protocol.auth.outbound.AuthGrantPacket
 
 /**
  * Requests an authorization grant for the player that is connecting.

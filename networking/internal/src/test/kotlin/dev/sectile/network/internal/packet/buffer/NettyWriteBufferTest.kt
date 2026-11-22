@@ -1,7 +1,7 @@
 package dev.sectile.network.internal.packet.buffer
 
 import dev.sectile.network.api.packet.OutboundPacket
-import dev.sectile.network.protocol.auth.AuthGrantPacket
+import dev.sectile.network.protocol.auth.outbound.AuthGrantPacket
 import io.netty.buffer.Unpooled
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test

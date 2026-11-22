@@ -3,7 +3,6 @@ package dev.sectile.network.internal.stages.prelogin
 import dev.sectile.network.api.packet.handler.PacketHandlerStorage
 import dev.sectile.network.api.packet.handler.on
 import dev.sectile.network.api.player.connection.ConnectionStage
-import dev.sectile.network.api.player.stage.StageSteps
 import dev.sectile.network.internal.stages.LoginNotifyStep
 import dev.sectile.network.internal.stages.Stage
 import dev.sectile.network.internal.stages.StageContext
@@ -18,8 +17,8 @@ import dev.sectile.network.internal.stages.prelogin.steps.SessionStartStep
 import dev.sectile.network.internal.stages.prelogin.steps.SetupFinalizeStep
 import dev.sectile.network.internal.stages.prelogin.steps.WorldSettingsStep
 import dev.sectile.network.protocol.ProtocolPacketTable
-import dev.sectile.network.protocol.setup.RequestAssetsPacket
-import dev.sectile.network.protocol.setup.SetupFinalizePacket
+import dev.sectile.network.protocol.asset.inbound.RequestAssetsPacket
+import dev.sectile.network.protocol.player.inbound.SetupFinalizePacket
 import java.time.Duration
 
 /**

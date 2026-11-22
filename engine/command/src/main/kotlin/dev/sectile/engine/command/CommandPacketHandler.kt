@@ -11,10 +11,10 @@ import dev.sectile.network.api.player.stage.StageSteps
 import dev.sectile.network.api.player.stage.StepDecision
 import dev.sectile.network.api.player.stage.StepPoint
 import dev.sectile.network.protocol.ProtocolPacketTable
-import dev.sectile.network.protocol.interfaceui.ArgValuesRequestPacket
-import dev.sectile.network.protocol.interfaceui.ArgValuesResponsePacket
-import dev.sectile.network.protocol.interfaceui.ChatMessagePacket
-import dev.sectile.network.protocol.packet.server.RawMessagePacket
+import dev.sectile.network.protocol.chat.inbound.ChatMessagePacket
+import dev.sectile.network.protocol.chat.outbound.RawMessagePacket
+import dev.sectile.network.protocol.command.inbound.ArgValuesRequestPacket
+import dev.sectile.network.protocol.command.outbound.ArgValuesResponsePacket
 
 internal object CommandPacketHandler {
 

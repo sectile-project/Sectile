@@ -5,7 +5,7 @@ import dev.sectile.network.api.packet.handler.handle
 import dev.sectile.network.api.packet.handler.on
 import dev.sectile.network.api.player.connection.ConnectionCloseCode
 import dev.sectile.network.protocol.ProtocolPacketTable
-import dev.sectile.network.protocol.connection.ClientDisconnectPacket
+import dev.sectile.network.protocol.connection.inbound.ClientDisconnectPacket
 
 /**
  * Registers the handler of the `ClientDisconnect` packet.

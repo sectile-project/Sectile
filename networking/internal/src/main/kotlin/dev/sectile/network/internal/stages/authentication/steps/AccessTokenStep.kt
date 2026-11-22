@@ -5,7 +5,7 @@ import dev.sectile.network.api.player.stage.StageSteps
 import dev.sectile.network.internal.auth.NetworkAuth
 import dev.sectile.network.internal.stages.StageContext
 import dev.sectile.network.internal.stages.StagePacketStep
-import dev.sectile.network.protocol.auth.AuthTokenPacket
+import dev.sectile.network.protocol.auth.inbound.AuthTokenPacket
 
 /**
  * Validates the access token the client sent in the `AuthToken` packet.

@@ -3,7 +3,7 @@ package dev.sectile.network.internal.io
 import dev.sectile.kernel.logger.Logger
 import dev.sectile.network.api.packet.OutboundPacket
 import dev.sectile.network.internal.io.frame.PacketFramer
-import dev.sectile.network.protocol.data.DataSize
+import dev.sectile.network.protocol.DataSize
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.PooledByteBufAllocator
 import io.netty.channel.ChannelHandler

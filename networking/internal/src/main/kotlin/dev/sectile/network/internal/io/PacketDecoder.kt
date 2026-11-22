@@ -8,7 +8,7 @@ import dev.sectile.network.internal.io.frame.PacketFramer
 import dev.sectile.network.internal.quic.QuicApplicationErrorCode
 import dev.sectile.network.internal.quic.QuicClose
 import dev.sectile.network.internal.quic.QuicProtocol
-import dev.sectile.network.protocol.data.DataSize
+import dev.sectile.network.protocol.DataSize
 import io.netty.buffer.ByteBuf
 import io.netty.channel.Channel
 import io.netty.channel.ChannelHandlerContext

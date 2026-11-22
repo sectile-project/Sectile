@@ -12,9 +12,9 @@ import dev.sectile.network.internal.stages.StageEnvironment
 import dev.sectile.network.internal.stages.StagePacketStep
 import dev.sectile.network.internal.stages.onClientDisconnect
 import dev.sectile.network.protocol.ProtocolPacketTable
-import dev.sectile.network.protocol.auth.PasswordAcceptedPacket
-import dev.sectile.network.protocol.auth.PasswordRejectedPacket
-import dev.sectile.network.protocol.auth.PasswordResponsePacket
+import dev.sectile.network.protocol.auth.inbound.PasswordResponsePacket
+import dev.sectile.network.protocol.auth.outbound.PasswordAcceptedPacket
+import dev.sectile.network.protocol.auth.outbound.PasswordRejectedPacket
 import java.security.MessageDigest
 import java.time.Duration
 
