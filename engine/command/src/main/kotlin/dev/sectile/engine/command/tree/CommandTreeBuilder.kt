@@ -13,7 +13,8 @@ internal object CommandTreeBuilder {
     fun argTypeIdFor(commandPath: String, index: Int, arg: CommandArg): String = arg.typeId ?: if (arg.completer != null) "cmd:$commandPath:$index" else "string"
 
     fun build(sender: CommandSender, commands: Collection<Command>): CommandTreeSyncPacket {
-        val entries = ArrayList<CommandTreeEntry>()
+        if (commands.isEmpty()) return CommandTreeSyncPacket(emptyList())
+        val entries = ArrayList<CommandTreeEntry>(commands.size)
         for (command in commands) {
             if (!hasPermission(sender, command.permission)) continue
             entries.add(buildEntry(sender, command, command.name))
@@ -27,37 +28,54 @@ internal object CommandTreeBuilder {
         commandPath: String,
     ): CommandTreeEntry {
         val prefix = "/" + commandPath.replace('/', ' ')
-        val subEntries = ArrayList<CommandTreeEntry>()
-        val subHints = ArrayList<String>()
+        val subEntries: List<CommandTreeEntry>
+        val subHints: List<String>
 
-        for (sub in command.subcommands.values) {
-            if (!hasPermission(sender, sub.permission)) continue
-            subEntries.add(buildEntry(sender, sub, "$commandPath/${sub.name}"))
-            subHints.add(buildSubcommandHint(sub))
+        if (command.subcommands.isEmpty()) {
+            subEntries = emptyList()
+            subHints = emptyList()
+        } else {
+            val builtEntries = ArrayList<CommandTreeEntry>(command.subcommands.size)
+            val builtHints = ArrayList<String>(command.subcommands.size)
+            for (sub in command.subcommands) {
+                if (!hasPermission(sender, sub.permission)) continue
+                builtEntries.add(buildEntry(sender, sub, "$commandPath/${sub.name}"))
+                builtHints.add(buildSubcommandHint(sub))
+            }
+            subEntries = builtEntries
+            subHints = builtHints
         }
 
-        val optionalEntries = command.flags.values.map { flag ->
-            CommandOptionalArgEntry(
-                name = "--${flag.name}",
-                hint = "",
-                argTypeId = null,
-                description = flag.description,
-            )
+        val optionalEntries = if (command.flags.isEmpty()) {
+            emptyList()
+        } else {
+            command.flags.map { flag ->
+                CommandOptionalArgEntry(
+                    name = "--${flag.name}",
+                    hint = "",
+                    argTypeId = null,
+                    description = flag.description,
+                )
+            }
         }
 
-        val requiredInfos = command.args.mapIndexed { idx, arg ->
-            CommandArgInfo(
-                name = arg.name,
-                argTypeId = argTypeIdFor(commandPath, idx, arg),
-                argTypeName = arg.name,
-                valueCount = 0,
-                description = arg.description,
-            )
+        val requiredInfos = if (command.args.isEmpty()) {
+            emptyList()
+        } else {
+            command.args.mapIndexed { idx, arg ->
+                CommandArgInfo(
+                    name = arg.name,
+                    argTypeId = argTypeIdFor(commandPath, idx, arg),
+                    argTypeName = arg.name,
+                    valueCount = 0,
+                    description = arg.description,
+                )
+            }
         }
 
         return CommandTreeEntry(
             name = command.name,
-            aliases = command.aliases.toList(),
+            aliases = if (command.aliases.isEmpty()) emptyList() else command.aliases.asList(),
             usageText = buildUsageText(prefix, command.args),
             description = command.description,
             subcommands = subEntries,

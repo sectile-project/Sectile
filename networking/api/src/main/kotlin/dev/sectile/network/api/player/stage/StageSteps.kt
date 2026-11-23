@@ -4,8 +4,8 @@ package dev.sectile.network.api.player.stage
  * The extension points of the stage machine.
  *
  * Every step of the lifecycle has a canonical name. A plugin registers a hook on one of them
- * with [StageHooks.before] or [StageHooks.after], and the server uses these constants so a
- * renamed step breaks the compilation instead of the hook.
+ * with [StageHookRegistry.before] or [StageHookRegistry.after] via `PluginScope`, and the server
+ * uses these constants so a renamed step breaks the compilation instead of the hook.
  */
 object StageSteps {
 

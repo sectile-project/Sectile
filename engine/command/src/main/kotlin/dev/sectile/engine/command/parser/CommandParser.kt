@@ -4,7 +4,6 @@ import dev.sectile.engine.api.command.Command
 import dev.sectile.engine.api.command.CommandSender
 import dev.sectile.engine.api.command.argument.Arguments
 import dev.sectile.engine.api.command.argument.CommandFlag
-import java.util.Locale
 
 internal object CommandParser {
 
@@ -28,8 +27,8 @@ internal object CommandParser {
             index++
         }
 
-        val positionalTokens = ArrayList<String>()
-        val flags = HashSet<String>()
+        var positionalTokens: ArrayList<String>? = null
+        var flags: HashSet<String>? = null
 
         for (i in index until tokens.size) {
             val token = tokens[i]
@@ -37,33 +36,37 @@ internal object CommandParser {
             if (isLongOption(token)) {
                 val match = LONG_FLAG_REGEX.matchEntire(token)
                     ?: throw IllegalArgumentException("Malformed flag '$token'.")
-                val rawName = match.groupValues[1].lowercase(Locale.ROOT)
+                val rawName = match.groupValues[1]
                 if (match.groups[2] != null) {
                     val flagName = currentCommand.findFlag(rawName)?.name ?: rawName
                     throw IllegalArgumentException("Flag '--$flagName' does not take a value.")
                 }
 
-                if (rawName == "help" || rawName == "?") {
+                if (rawName.equals("help", ignoreCase = true) || rawName == "?") {
                     sendCommandHelp(sender, currentCommand, tokens, index)
                     return true
                 }
 
-                recordFlag(flags, currentCommand.findFlag(rawName), rawName)
+                val flagSet = flags ?: HashSet<String>(4).also { flags = it }
+                recordFlag(flagSet, currentCommand.findFlag(rawName), rawName)
             } else if (token.startsWith("-") && token.length > 1) {
                 // Only treat single-dash tokens like `-s` as flags when declared,
                 // leaving negative numbers such as `-4` as positional arguments.
                 val declared = currentCommand.findFlag(token)
                 if (declared != null) {
-                    recordFlag(flags, declared, declared.name)
+                    val flagSet = flags ?: HashSet<String>(4).also { flags = it }
+                    recordFlag(flagSet, declared, declared.name)
                 } else {
-                    positionalTokens.add(token)
+                    val posList = positionalTokens ?: ArrayList<String>(4).also { positionalTokens = it }
+                    posList.add(token)
                 }
             } else {
-                positionalTokens.add(token)
+                val posList = positionalTokens ?: ArrayList<String>(4).also { positionalTokens = it }
+                posList.add(token)
             }
         }
 
-        if (positionalTokens.isEmpty() && !currentCommand.hasExecutor && currentCommand.subcommands.isNotEmpty()) {
+        if (positionalTokens == null && !currentCommand.hasExecutor && currentCommand.subcommands.isNotEmpty()) {
             sendCommandHelp(sender, currentCommand, tokens, index)
             return true
         }
@@ -75,8 +78,8 @@ internal object CommandParser {
         }
 
         val args = Arguments(
-            tokens = positionalTokens,
-            flags = flags,
+            tokens = positionalTokens ?: emptyList(),
+            flags = flags ?: emptySet(),
         )
 
         return try {
@@ -94,7 +97,9 @@ internal object CommandParser {
             return
         }
         flagsOut.add(flag.name)
-        flagsOut.addAll(flag.aliases)
+        for (alias in flag.aliases) {
+            flagsOut.add(alias)
+        }
     }
 
     private fun formatCommandPath(rootCommand: Command, tokens: List<String>, endIndex: Int): String = buildString {
@@ -115,22 +120,24 @@ internal object CommandParser {
             sender.receiveMessage("  Usage: ${formatUsageLine(prefix, command)}")
         }
 
-        val visibleSubs = command.subcommands.values.filter {
-            it.permission == null || sender.hasPermission(it.permission!!)
-        }
-        if (visibleSubs.isNotEmpty()) {
-            sender.receiveMessage("  Subcommands:")
-            for (sub in visibleSubs) {
-                val subDesc = sub.description?.let { " - $it" } ?: ""
-                sender.receiveMessage("    ${formatUsageLine("$prefix ${sub.name}", sub)}$subDesc")
+        if (command.subcommands.isNotEmpty()) {
+            val visibleSubs = command.subcommands.filter {
+                it.permission == null || sender.hasPermission(it.permission!!)
+            }
+            if (visibleSubs.isNotEmpty()) {
+                sender.receiveMessage("  Subcommands:")
+                for (sub in visibleSubs) {
+                    val subDesc = sub.description?.let { " - $it" } ?: ""
+                    sender.receiveMessage("    ${formatUsageLine("$prefix ${sub.name}", sub)}$subDesc")
+                }
             }
         }
 
         if (command.flags.isNotEmpty()) {
             sender.receiveMessage("  Flags:")
-            for ((name, _, description) in command.flags.values) {
-                val flagDesc = description?.let { " - $it" } ?: ""
-                sender.receiveMessage("    --$name$flagDesc")
+            for (flag in command.flags) {
+                val flagDesc = flag.description?.let { " - $it" } ?: ""
+                sender.receiveMessage("    --${flag.name}$flagDesc")
             }
         }
     }
@@ -139,7 +146,7 @@ internal object CommandParser {
         append('/')
         for (i in 0 until endIndex) {
             if (i > 0) append(' ')
-            append(tokens[i].lowercase(Locale.ROOT))
+            append(tokens[i])
         }
     }
 
@@ -148,7 +155,7 @@ internal object CommandParser {
             return formatUsageLine(prefix, command)
         }
         if (command.subcommands.isNotEmpty()) {
-            return "$prefix <${command.subcommands.keys.joinToString("|")}>"
+            return "$prefix <${command.subcommands.joinToString("|") { it.name }}>"
         }
         return prefix
     }
@@ -157,8 +164,8 @@ internal object CommandParser {
         if (command.args.isEmpty()) return prefix
         return buildString {
             append(prefix)
-            for ((name) in command.args) {
-                append(" <").append(name).append('>')
+            for (arg in command.args) {
+                append(" <").append(arg.name).append('>')
             }
         }
     }

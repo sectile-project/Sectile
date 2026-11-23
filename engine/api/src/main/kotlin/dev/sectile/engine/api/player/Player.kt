@@ -13,7 +13,9 @@ import java.util.UUID
  * not visible to plugins. A plugin can observe a player but cannot change its world, its
  * position or its connection state through this interface.
  */
-interface Player : CommandSender, ConnectionHolder {
+interface Player :
+    CommandSender,
+    ConnectionHolder {
 
     /** World this player currently belongs to. */
     val world: World

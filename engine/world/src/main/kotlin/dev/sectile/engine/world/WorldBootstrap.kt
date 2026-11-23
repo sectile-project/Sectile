@@ -6,9 +6,9 @@ import dev.sectile.engine.internal.registry.InternalPlayerRegistry
 import dev.sectile.engine.internal.registry.InternalWorldRegistry
 import dev.sectile.engine.world.handler.MovementHandler
 import dev.sectile.kernel.logger.Logger
-import dev.sectile.network.api.Network
+import dev.sectile.network.api.packet.handler.PacketHandlerRegistry
 import dev.sectile.network.api.player.connection.ConnectionStage
-import dev.sectile.network.api.player.stage.StageHooks
+import dev.sectile.network.api.player.stage.StageHookRegistry
 import dev.sectile.network.api.player.stage.StageSteps
 import dev.sectile.network.api.player.stage.StepDecision
 import dev.sectile.network.api.player.stage.StepPoint
@@ -29,19 +29,23 @@ object WorldBootstrap {
      * It must be called after the network connector has been initialized.
      */
     @Synchronized
-    fun init(logger: Logger) {
+    fun init(
+        logger: Logger,
+        packetHandlers: PacketHandlerRegistry,
+        stageHooks: StageHookRegistry,
+    ) {
         if (initialized) return
         initialized = true
 
         InternalWorldRegistry.register(SimpleWorld(DEFAULT_WORLD_ID, "Default"))
 
-        registerJoinHook(logger)
-        Network.packetHandlers.add(MovementHandler)
+        registerJoinHook(logger, stageHooks)
+        packetHandlers.add(MovementHandler)
     }
 
     /** Creates the player when the connection reaches POST_LOGIN. */
-    private fun registerJoinHook(logger: Logger) {
-        StageHooks.after(StepPoint(ConnectionStage.POST_LOGIN, StageSteps.POST_LOGIN_WORLD_JOIN)) { ctx ->
+    private fun registerJoinHook(logger: Logger, stageHooks: StageHookRegistry) {
+        stageHooks.after(StepPoint(ConnectionStage.POST_LOGIN, StageSteps.POST_LOGIN_WORLD_JOIN)) { ctx ->
             val world: World = InternalWorldRegistry.default ?: return@after StepDecision.Reject(NO_WORLD_REASON)
 
             val connection = ctx.connection

@@ -4,7 +4,6 @@ import dev.sectile.engine.api.command.Command
 import dev.sectile.engine.api.command.CommandSender
 import dev.sectile.engine.api.command.argument.TabContext
 import dev.sectile.engine.command.parser.CommandParser
-import java.util.Locale
 
 internal object CommandCompleter {
 
@@ -37,7 +36,7 @@ internal object CommandCompleter {
             return suggestCommandNames(sender, allCommands, rawPrefix)
         }
 
-        val rootName = words[0].removePrefix("/").lowercase(Locale.ROOT)
+        val rootName = words[0].removePrefix("/")
         var command = resolver(rootName) ?: return emptyList()
         if (!hasPermission(sender, command.permission)) return emptyList()
 
@@ -50,28 +49,33 @@ internal object CommandCompleter {
             argBase = i + 1
         }
 
-        val suggestions = LinkedHashSet<String>()
+        var suggestions: LinkedHashSet<String>? = null
 
         if (CommandParser.isLongOption(rawPrefix)) {
-            suggestFlagNames(command, rawPrefix, suggestions)
-            return suggestions.toList()
+            if (command.flags.isEmpty()) return emptyList()
+            val out = LinkedHashSet<String>()
+            suggestFlagNames(command, rawPrefix, out)
+            return out.toList()
         }
 
         val positionalIndex = countPositionalTokens(command, words, argBase, wordIndex)
-        if (positionalIndex == 0) {
-            for ((subName, subCmd) in command.subcommands) {
+        if (positionalIndex == 0 && command.subcommands.isNotEmpty()) {
+            for (subCmd in command.subcommands) {
+                val subName = subCmd.name
                 if (hasPermission(sender, subCmd.permission) && subName.startsWith(rawPrefix, ignoreCase = true)) {
-                    suggestions.add(subName)
+                    val out = suggestions ?: LinkedHashSet<String>().also { suggestions = it }
+                    out.add(subName)
                 }
             }
         }
 
         val arg = command.args.getOrNull(positionalIndex)
-        if (arg != null) {
-            collectMatches(command.javaClass.classLoader, arg.completer, sender, rawPrefix, suggestions)
+        if (arg?.completer != null) {
+            val out = suggestions ?: LinkedHashSet<String>().also { suggestions = it }
+            collectMatches(command.javaClass.classLoader, arg.completer, sender, rawPrefix, out)
         }
 
-        return suggestions.toList()
+        return suggestions?.toList() ?: emptyList()
     }
 
     private fun suggestCommandNames(
@@ -96,7 +100,7 @@ internal object CommandCompleter {
         prefix: String,
         out: MutableSet<String>,
     ) {
-        for (flag in command.flags.values) {
+        for (flag in command.flags) {
             val full = "--${flag.name}"
             if (full.startsWith(prefix, ignoreCase = true)) {
                 out.add(full)

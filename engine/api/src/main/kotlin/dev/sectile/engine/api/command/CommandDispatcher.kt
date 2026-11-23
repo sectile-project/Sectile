@@ -3,7 +3,7 @@ package dev.sectile.engine.api.command
 import dev.sectile.engine.api.player.Player
 
 interface CommandDispatcher {
-    val commands: Collection<Command>
+    val all: Collection<Command>
 
     fun resolve(nameOrAlias: String): Command?
 

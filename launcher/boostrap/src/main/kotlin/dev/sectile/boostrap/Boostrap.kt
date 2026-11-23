@@ -1,11 +1,11 @@
 package dev.sectile.boostrap
 
-import dev.sectile.boostrap.command.HelpCommand
-import dev.sectile.boostrap.command.PluginsCommand
-import dev.sectile.boostrap.command.StopCommand
-import dev.sectile.boostrap.command.WhereAmICommand
-import dev.sectile.boostrap.command.WhoCommand
 import dev.sectile.boostrap.command.authCommand
+import dev.sectile.boostrap.command.helpCommand
+import dev.sectile.boostrap.command.pluginCommand
+import dev.sectile.boostrap.command.stopCommand
+import dev.sectile.boostrap.command.whereAmICommand
+import dev.sectile.boostrap.command.whoCommand
 import dev.sectile.boostrap.console.Console
 import dev.sectile.boostrap.logger.LoggersLoader
 import dev.sectile.boostrap.network.loadNetwork
@@ -24,12 +24,12 @@ import dev.sectile.kernel.config.ConfigServiceRegistry
 import dev.sectile.kernel.plugin.scope.provider.ProtectedLazyProvider
 import dev.sectile.microkernel.Microkernel
 import dev.sectile.microkernel.plugin.scope.KernelPluginScopeFactory
-import dev.sectile.network.api.Network
 import dev.sectile.network.api.packet.handler.PacketHandlerRegistry
 import dev.sectile.network.api.player.stage.StageHookRegistry
-import dev.sectile.network.api.player.stage.StageHooks
+import dev.sectile.network.internal.NetworkInternalConnector
 import dev.sectile.network.internal.packet.scope.ScopedPacketHandlerProvider
 import dev.sectile.network.internal.stages.ScopedStageHookProvider
+import dev.sectile.network.internal.stages.StageHooks
 import dev.sectile.sdk.bundled.config.json.JsonConfigService
 import dev.sectile.sdk.bundled.config.yaml.YamlConfigService
 import dev.sectile.sdk.bundled.scanner.ScannerProvider
@@ -51,10 +51,9 @@ fun startServer(publicClassLoader: ClassLoader, startTime: Long) {
 
     val console = loggersLoader.resolveConsole()
     registerBuiltinCommands(console, commandRegistry)
-
     loadNetwork(configService, logger)
-    WorldBootstrap.init(logger)
-    CommandBootstrap.initNetwork(logger)
+    WorldBootstrap.init(logger, NetworkInternalConnector.packetHandlers, StageHooks)
+    CommandBootstrap.initNetwork(logger, NetworkInternalConnector.packetHandlers, StageHooks)
 
     logger.info("Server started in ${System.currentTimeMillis() - startTime}ms")
 
@@ -65,7 +64,7 @@ private fun startSDK() {
     KernelPluginScopeFactory.registerDefaultProvider { ScannerProvider() }
     KernelPluginScopeFactory.registerDefaultProvider {
         ProtectedLazyProvider(PacketHandlerRegistry::class.java) {
-            ScopedPacketHandlerProvider(Network.packetHandlers)
+            ScopedPacketHandlerProvider(NetworkInternalConnector.packetHandlers)
         }
     }
     KernelPluginScopeFactory.registerDefaultProvider {
@@ -89,11 +88,7 @@ private fun startEngine(): CommandRegistry {
 
 private fun registerBuiltinCommands(console: Console?, registry: CommandRegistry) {
     registry.register(
-        HelpCommand(registry),
-        WhereAmICommand(),
-        WhoCommand(),
-        PluginsCommand(),
-        authCommand(),
-        StopCommand(console),
-    )
+        helpCommand(), whereAmICommand(),
+        whoCommand(), pluginCommand(),
+        authCommand(), stopCommand(console))
 }

@@ -20,8 +20,18 @@ class CommandBuilder(
     description: String? = null,
 ) : BaseCommand(name, description) {
 
+    private var executor: ((CommandSender, Arguments) -> Unit)? = null
+
     override val hasExecutor: Boolean
-        get() = customExecutor != null
+        get() = executor != null
+
+    fun executes(block: (CommandSender, Arguments) -> Unit) {
+        executor = block
+    }
+
+    override fun execute(sender: CommandSender, args: Arguments) {
+        executor?.invoke(sender, args)
+    }
 
     fun executesPlayer(
         rejectMessage: String = "Only players can execute this command.",

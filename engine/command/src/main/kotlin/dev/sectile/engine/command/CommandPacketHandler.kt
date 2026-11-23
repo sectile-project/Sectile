@@ -2,11 +2,11 @@ package dev.sectile.engine.command
 
 import dev.sectile.engine.api.Engine
 import dev.sectile.engine.api.command.CommandDispatcher
-import dev.sectile.network.api.Network
+import dev.sectile.network.api.packet.handler.PacketHandlerRegistry
 import dev.sectile.network.api.packet.handler.on
 import dev.sectile.network.api.player.connection.ConnectionKey
 import dev.sectile.network.api.player.connection.ConnectionStage
-import dev.sectile.network.api.player.stage.StageHooks
+import dev.sectile.network.api.player.stage.StageHookRegistry
 import dev.sectile.network.api.player.stage.StageSteps
 import dev.sectile.network.api.player.stage.StepDecision
 import dev.sectile.network.api.player.stage.StepPoint
@@ -27,22 +27,32 @@ internal object CommandPacketHandler {
     private val ARG_RATE_LIMIT_KEY =
         ConnectionKey<MutableMap<String, Long>>("engine.command.argValuesRateLimit")
 
-    fun register(dispatcher: CommandDispatcher) {
-        registerCommandTreeHook(dispatcher)
-        registerCommandChatHandler(dispatcher)
-        registerArgValuesHandler(dispatcher)
+    fun register(
+        dispatcher: CommandDispatcher,
+        packetHandlers: PacketHandlerRegistry,
+        stageHooks: StageHookRegistry,
+    ) {
+        registerCommandTreeHook(dispatcher, stageHooks)
+        registerCommandChatHandler(dispatcher, packetHandlers)
+        registerArgValuesHandler(dispatcher, packetHandlers)
     }
 
-    private fun registerCommandTreeHook(dispatcher: CommandDispatcher) {
-        StageHooks.after(StepPoint(ConnectionStage.POST_LOGIN, StageSteps.POST_LOGIN_WORLD_JOIN)) { ctx ->
+    private fun registerCommandTreeHook(
+        dispatcher: CommandDispatcher,
+        stageHooks: StageHookRegistry,
+    ) {
+        stageHooks.after(StepPoint(ConnectionStage.POST_LOGIN, StageSteps.POST_LOGIN_WORLD_JOIN)) { ctx ->
             val player = Engine.players.byConnection(ctx.connection) ?: return@after StepDecision.Continue
             dispatcher.syncCommandTree(player)
             StepDecision.Continue
         }
     }
 
-    private fun registerCommandChatHandler(dispatcher: CommandDispatcher) {
-        Network.packetHandlers.on(ProtocolPacketTable.CHAT_MESSAGE, ::ChatMessagePacket) { connection, packet ->
+    private fun registerCommandChatHandler(
+        dispatcher: CommandDispatcher,
+        packetHandlers: PacketHandlerRegistry,
+    ) {
+        packetHandlers.on(ProtocolPacketTable.CHAT_MESSAGE, ::ChatMessagePacket) { connection, packet ->
             val message = packet.message
             if (message.isNullOrEmpty()) {
                 connection.disconnect(INVALID_CHAT_REASON)
@@ -60,8 +70,11 @@ internal object CommandPacketHandler {
         }
     }
 
-    private fun registerArgValuesHandler(dispatcher: CommandDispatcher) {
-        Network.packetHandlers.on(
+    private fun registerArgValuesHandler(
+        dispatcher: CommandDispatcher,
+        packetHandlers: PacketHandlerRegistry,
+    ) {
+        packetHandlers.on(
             ProtocolPacketTable.ARG_VALUES_REQUEST,
             ::ArgValuesRequestPacket,
         ) { connection, packet ->

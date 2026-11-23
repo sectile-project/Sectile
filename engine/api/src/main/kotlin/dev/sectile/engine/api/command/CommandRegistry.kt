@@ -11,7 +11,7 @@ interface CommandRegistration : AutoCloseable {
 interface CommandRegistry : CommandDispatcher {
     fun register(command: Command): CommandRegistration
 
-    fun register(vararg commands: Command): List<CommandRegistration> = commands.map(::register)
+    fun register(vararg commands: Command): List<CommandRegistration>
 
     fun unregister(name: String): Boolean
 

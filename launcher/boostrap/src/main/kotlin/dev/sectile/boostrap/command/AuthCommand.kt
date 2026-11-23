@@ -10,7 +10,7 @@ import java.time.OffsetDateTime
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.max
 
-internal fun authCommand(): Command = command("auth", "Manage Hytale server authentication.") {
+fun authCommand(): Command = command("auth", "Manage Hytale server authentication.") {
     val loginInProgress = AtomicBoolean(false)
 
     subcommand("login", "Authenticate the server with Hytale.") {

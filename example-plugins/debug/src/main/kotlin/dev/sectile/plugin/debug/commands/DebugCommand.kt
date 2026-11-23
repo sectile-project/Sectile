@@ -12,7 +12,7 @@ class DebugCommand :
     BaseCommand(
         name = "debug",
         description = "Debug plugin test command.",
-        aliases = listOf("dbg"),
+        aliases = arrayOf("dbg"),
     ) {
 
     init {

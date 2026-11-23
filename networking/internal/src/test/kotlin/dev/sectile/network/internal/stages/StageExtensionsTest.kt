@@ -2,7 +2,6 @@ package dev.sectile.network.internal.stages
 
 import dev.sectile.network.api.player.connection.ConnectionStage
 import dev.sectile.network.api.player.stage.HookPhase
-import dev.sectile.network.api.player.stage.StageHooks
 import dev.sectile.network.api.player.stage.StepContext
 import dev.sectile.network.api.player.stage.StepDecision
 import dev.sectile.network.api.player.stage.StepPoint

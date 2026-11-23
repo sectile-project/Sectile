@@ -3,6 +3,7 @@ package dev.sectile.network.internal
 import dev.sectile.kernel.logger.Logger
 import dev.sectile.network.api.Network
 import dev.sectile.network.api.packet.PacketRegistry
+import dev.sectile.network.api.packet.handler.PacketHandlerRegistry
 import dev.sectile.network.api.packet.handler.PacketHandlerStorage
 import dev.sectile.network.api.player.connection.ConnectionStage
 import dev.sectile.network.internal.config.NetworkConfig
@@ -23,34 +24,42 @@ import java.util.concurrent.CompletableFuture
 class NetworkInternalConnector private constructor(
     private val config: NetworkConfig,
     private val connection: ServerConnection,
-    private val stageStorages: Map<ConnectionStage, PacketHandlerStorage>,
 ) {
     companion object {
 
         @Volatile
         private var ref: NetworkInternalConnector? = null
 
+        internal val stageStorages: Map<ConnectionStage, PacketHandlerStorage> =
+            EnumMap<ConnectionStage, PacketHandlerStorage>(ConnectionStage::class.java).apply {
+                for (stage in ConnectionStage.entries) {
+                    put(stage, StatePacketHandlerStorage(PacketRegistry.MAX_PACKETS))
+                }
+            }
+
+        /**
+         * Active gameplay ([ConnectionStage.POST_LOGIN]) packet handler registry.
+         *
+         * Internal runtime components pass this explicitly; plugins access a scoped view via `PluginScope`.
+         */
+        val packetHandlers: PacketHandlerRegistry
+            get() = stageStorages.getValue(ConnectionStage.POST_LOGIN)
+
         val config: NetworkConfig get() = connector.config
-        internal val stageStorages: Map<ConnectionStage, PacketHandlerStorage> get() = connector.stageStorages
 
         fun init(config: NetworkConfig, logger: Logger): CompletableFuture<Unit> {
             if (ref != null) error("Network internal connector already initialized")
 
-            val storages = EnumMap<ConnectionStage, PacketHandlerStorage>(ConnectionStage::class.java)
-            for (stage in ConnectionStage.entries) {
-                storages[stage] = StatePacketHandlerStorage(PacketRegistry.MAX_PACKETS)
-            }
-
             val connection = ServerConnection()
-            ref = NetworkInternalConnector(config, connection, storages)
+            ref = NetworkInternalConnector(config, connection)
 
-            Network.init(storages, PacketSenderInternal())
+            Network.init(PacketSenderInternal())
 
             // Offload protocol/stage wiring so startup is not blocked by classloading Netty and stage handlers;
             // wiring completes before quic.bind accepts any client packet.
             val stagesFuture = CompletableFuture.runAsync {
                 wireDisconnectSupport()
-                StageRegistry.register(storages, StageEnvironment.create(config, logger))
+                StageRegistry.register(stageStorages, StageEnvironment.create(config, logger))
             }
 
             return stagesFuture.thenCompose { connection.init(config, logger) }

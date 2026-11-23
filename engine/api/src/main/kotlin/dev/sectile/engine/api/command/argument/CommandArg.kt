@@ -14,8 +14,8 @@ data class CommandArg(
     val completer: (TabContext.() -> Iterable<String>)? = null,
 )
 
-data class CommandFlag(
+class CommandFlag(
     val name: String,
-    val aliases: Set<String> = emptySet(),
+    val aliases: Array<String> = emptyArray(),
     val description: String? = null,
 )

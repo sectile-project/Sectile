@@ -6,12 +6,12 @@ import dev.sectile.engine.api.command.argument.CommandFlag
 
 interface Command {
     val name: String
-    val aliases: Set<String>
+    val aliases: Array<String>
     val description: String?
-    val permission: String?
+    val permission: String
     val args: List<CommandArg>
-    val flags: Map<String, CommandFlag>
-    val subcommands: Map<String, Command>
+    val flags: List<CommandFlag>
+    val subcommands: List<Command>
     val hasExecutor: Boolean
         get() = true
 

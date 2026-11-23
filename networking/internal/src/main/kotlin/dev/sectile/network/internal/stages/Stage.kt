@@ -57,7 +57,7 @@ internal interface Stage {
  *
  * A step is the smallest unit of work of the stage machine. Its name is the canonical
  * identifier of the extension point it represents: plugins hook on it through
- * [dev.sectile.network.api.player.stage.StageHooks].
+ * [StageHooks].
  */
 internal interface StageStep {
 

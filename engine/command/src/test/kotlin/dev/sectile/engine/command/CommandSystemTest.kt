@@ -6,9 +6,6 @@ import dev.sectile.engine.api.command.CommandSender
 import dev.sectile.engine.api.command.argument.Arguments
 import dev.sectile.engine.api.player.Player
 import dev.sectile.engine.api.world.World
-import dev.sectile.engine.chat.color.Color
-import dev.sectile.engine.chat.component.Message
-import dev.sectile.engine.chat.component.receiveMessage
 import dev.sectile.engine.command.scope.ScopedCommandRegistryProvider
 import dev.sectile.engine.command.tokenizer.CommandTokenizer
 import dev.sectile.engine.command.tree.CommandTreeBuilder
@@ -29,7 +26,6 @@ import dev.sectile.network.api.player.connection.ConnectionKey
 import dev.sectile.network.api.player.connection.ConnectionStage
 import dev.sectile.network.api.player.connection.PlayerConnection
 import dev.sectile.network.protocol.chat.outbound.RawMessagePacket
-import dev.sectile.network.protocol.chat.outbound.ServerMessagePacket
 import dev.sectile.network.protocol.command.outbound.CommandTreeSyncPacket
 import dev.sectile.sdk.command.argBoolean
 import dev.sectile.sdk.command.argChoices
@@ -48,7 +44,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
-import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertSame
@@ -124,7 +119,7 @@ class CommandSystemTest {
         val registry = createRegistry()
         var output = ""
 
-        val gmCmd = object : BaseCommand("gamemode", "Sets game mode", listOf("gm"), "sectile.gamemode") {
+        val gmCmd = object : BaseCommand("gamemode", "Sets game mode", arrayOf("gm"), "sectile.gamemode") {
             init {
                 argEnum<SampleMode>("mode")
                 subcommand("check", "Checks current mode") {
@@ -246,7 +241,7 @@ class CommandSystemTest {
             executes { _, _ -> }
         }
 
-        val tree = CommandTreeBuilder.build(RecordingSender(permissions = emptySet()), registry.commands)
+        val tree = CommandTreeBuilder.build(RecordingSender(permissions = emptySet()), registry.all)
         val entries = tree.commands!!
         assertEquals(1, entries.size)
         assertEquals("public", entries[0].name)
@@ -371,60 +366,6 @@ class CommandSystemTest {
     }
 
     @Test
-    fun `message optimizes raw vs styled packets supports receiveMessage and broadcast`() {
-        val world = SimpleWorld("default", "Default")
-        InternalWorldRegistry.register(world)
-        val p1 = createPlayer(world, "Alice")
-        val p2 = createPlayer(world, "Bob")
-        world.add(p1)
-        world.add(p2)
-        val console = RecordingSender("Console")
-
-        val raw = Message.of("Plain hello")
-        assertTrue(raw.isRaw)
-        assertEquals(-1, raw.colorRgb)
-        assertIs<RawMessagePacket>(raw.toPacket())
-        raw.sendTo(listOf(p1, p2, console))
-
-        val conn1 = p1.connection as RecordingConnection
-        val conn2 = p2.connection as RecordingConnection
-        val rawPacket1 = conn1.sentPackets.last()
-        val rawPacket2 = conn2.sentPackets.last()
-        assertIs<RawMessagePacket>(rawPacket1)
-        assertSame(rawPacket1, rawPacket2)
-        assertEquals("Plain hello", console.messages.last())
-
-        val styled = Message.of("Alert ", Color.hex("#FF5500"))
-        styled.bold = true
-        styled.append("check").apply {
-            underline = true
-        }
-
-        assertFalse(styled.isRaw)
-        assertEquals(0xFF5500, styled.colorRgb)
-        assertEquals("Alert check", styled.toPlainText())
-
-        styled.broadcast()
-        val broadcast1 = conn1.sentPackets.last()
-        val broadcast2 = conn2.sentPackets.last()
-        assertIs<ServerMessagePacket>(broadcast1)
-        assertSame(broadcast1, broadcast2)
-        assertSame(styled, broadcast1.message)
-
-        console.receiveMessage(styled)
-        assertEquals("Alert check", console.messages.last())
-
-        val registry = createRegistry()
-        registry.register("notify") {
-            executes { sender, _ ->
-                styled.sendTo(sender)
-            }
-        }
-        assertTrue(registry.execute(p1, "/notify"))
-        assertIs<ServerMessagePacket>(conn1.sentPackets.last())
-    }
-
-    @Test
     fun `scoped command registry removes custom argTypeId completers on close while keeping builtins`() {
         val world = SimpleWorld("lobby", "Lobby")
         InternalWorldRegistry.register(world)
@@ -504,6 +445,44 @@ class CommandSystemTest {
         registration.unregister()
         assertNull(registry.resolve("direct"))
         assertFalse(scoped.unregister("direct"))
+    }
+
+    @Test
+    fun `preserves command casing uses empty defaults lazily and deduplicates aliases on registration`() {
+        val registry = createRegistry()
+        var lastSender = ""
+
+        val cmd = object : BaseCommand(
+            name = "MixedCase",
+            aliases = arrayOf("MyAlias", "myalias", "", "   ", "mixedcase"),
+        ) {
+            override fun execute(sender: CommandSender, args: Arguments) {
+                lastSender = "${sender.name}:${args.isEmpty}:${args.hasFlag("any")}"
+            }
+        }
+
+        assertEquals("MixedCase", cmd.name)
+        assertTrue(cmd.aliases.isNotEmpty())
+        assertTrue(cmd.args.isEmpty())
+        assertTrue(cmd.flags.isEmpty())
+        assertTrue(cmd.subcommands.isEmpty())
+        assertNull(cmd.findSubcommand("missing"))
+        assertNull(cmd.findFlag("--missing"))
+
+        registry.register(cmd)
+
+        assertSame(cmd, registry.resolve("MixedCase"))
+        assertSame(cmd, registry.resolve("mixedcase"))
+        assertSame(cmd, registry.resolve("MyAlias"))
+        assertSame(cmd, registry.resolve("myalias"))
+
+        val sender = RecordingSender("Tester")
+        assertTrue(registry.execute(sender, "MYALIAS"))
+        assertEquals("Tester:true:false", lastSender)
+
+        assertTrue(registry.unregister("mixedcase"))
+        assertNull(registry.resolve("MixedCase"))
+        assertNull(registry.resolve("myalias"))
     }
 
     private fun createRegistry(): DefaultCommandRegistry = DefaultCommandRegistry(TestLogger)

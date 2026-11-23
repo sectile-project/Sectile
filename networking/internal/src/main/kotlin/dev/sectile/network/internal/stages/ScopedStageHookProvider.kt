@@ -5,7 +5,6 @@ import dev.sectile.kernel.plugin.scope.provider.ProtectedDependencyProvider
 import dev.sectile.network.api.player.stage.StageHook
 import dev.sectile.network.api.player.stage.StageHookRegistration
 import dev.sectile.network.api.player.stage.StageHookRegistry
-import dev.sectile.network.api.player.stage.StageHooks
 import dev.sectile.network.api.player.stage.StepContext
 import dev.sectile.network.api.player.stage.StepDecision
 import dev.sectile.network.api.player.stage.StepPoint

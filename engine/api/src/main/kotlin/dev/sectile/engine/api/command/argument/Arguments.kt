@@ -29,7 +29,14 @@ class Arguments(
 
     fun isValidIndex(idx: Int): Boolean = idx in tokens.indices
 
-    fun hasFlag(name: String, vararg aliases: String): Boolean = normalizeKey(name) in flags || aliases.any { normalizeKey(it) in flags }
+    fun hasFlag(name: String, vararg aliases: String): Boolean {
+        if (flags.isEmpty()) return false
+        if (containsFlag(name)) return true
+        for (alias in aliases) {
+            if (containsFlag(alias)) return true
+        }
+        return false
+    }
 
     fun move(count: Int = 1) {
         index = (index + count).coerceIn(0, tokens.size)
@@ -80,5 +87,15 @@ class Arguments(
         return constants.firstOrNull { it.name.equals(raw, ignoreCase = true) }
     }
 
-    private fun normalizeKey(raw: String): String = raw.removePrefix("--").removePrefix("-").lowercase(Locale.ROOT)
+    private fun containsFlag(raw: String): Boolean {
+        val key = stripFlagPrefix(raw)
+        if (key in flags) return true
+        return flags.any { it.equals(key, ignoreCase = true) }
+    }
+
+    private fun stripFlagPrefix(raw: String): String = when {
+        raw.startsWith("--") -> raw.substring(2)
+        raw.startsWith("-") -> raw.substring(1)
+        else -> raw
+    }
 }

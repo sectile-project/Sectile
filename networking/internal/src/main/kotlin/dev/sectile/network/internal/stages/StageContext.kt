@@ -9,7 +9,6 @@ import dev.sectile.network.api.player.connection.ConnectionStage
 import dev.sectile.network.api.player.connection.PlayerConnection
 import dev.sectile.network.api.player.stage.HookPhase
 import dev.sectile.network.api.player.stage.LoginSnapshot
-import dev.sectile.network.api.player.stage.StageHooks
 import dev.sectile.network.api.player.stage.StepContext
 import dev.sectile.network.api.player.stage.StepDecision
 import dev.sectile.network.api.player.stage.StepPoint
@@ -24,7 +23,7 @@ import dev.sectile.network.internal.player.DisconnectSupport
  * ([login] for the authentication stages and [session] for the world and gameplay stages).
  *
  * It is also where the extensions are applied: before and after every step the hooks
- * registered in [dev.sectile.network.api.player.stage.StageHooks] get the chance to reject
+ * registered in [StageHooks] get the chance to reject
  * the connection, to pause it or to move it to another stage.
  */
 internal class StageContext(

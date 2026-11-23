@@ -20,13 +20,17 @@ class ScopedCommandRegistryProvider(
     private val registrations: MutableList<CommandRegistration> =
         Collections.synchronizedList(mutableListOf())
 
-    override val commands: Collection<Command>
-        get() = delegate.commands
+    override val all: Collection<Command>
+        get() = delegate.all
 
     override fun register(command: Command): CommandRegistration {
         val wrapped = ScopedRegistration(delegate.register(command))
         registrations.add(wrapped)
         return wrapped
+    }
+
+    override fun register(vararg commands: Command): List<CommandRegistration> {
+        return delegate.register(*commands).map { ScopedRegistration(it) }.also { registrations.addAll(it) }
     }
 
     override fun unregister(name: String): Boolean {
