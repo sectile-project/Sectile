@@ -19,4 +19,11 @@ interface PacketsSender {
      * Sends a single packet efficiently to all [connections].
      */
     fun sendPacket(connections: Collection<PlayerConnection>, packet: OutboundPacket)
+
+    /**
+     * Sends a single packet efficiently to all [connections], checking for [dev.sectile.network.api.player.connection.ConnectionHolder] instances.
+     */
+    fun lazySendPacket(connections: Collection<Any>, packet: OutboundPacket)
+
+    fun lazySendPackets(connections: Collection<Any>, vararg packets: OutboundPacket)
 }

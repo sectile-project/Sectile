@@ -2,7 +2,7 @@ package dev.sectile.engine.api.player
 
 import dev.sectile.engine.api.command.CommandSender
 import dev.sectile.engine.api.world.World
-import dev.sectile.network.api.player.connection.PlayerConnection
+import dev.sectile.network.api.player.connection.ConnectionHolder
 import dev.sectile.network.protocol.chat.outbound.RawMessagePacket
 import java.util.UUID
 
@@ -13,10 +13,7 @@ import java.util.UUID
  * not visible to plugins. A plugin can observe a player but cannot change its world, its
  * position or its connection state through this interface.
  */
-interface Player : CommandSender {
-
-    /** Transport handle of this player. Connection concerns only, never game state. */
-    val connection: PlayerConnection
+interface Player : CommandSender, ConnectionHolder {
 
     /** World this player currently belongs to. */
     val world: World

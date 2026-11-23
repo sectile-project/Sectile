@@ -24,7 +24,7 @@ import dev.sectile.kernel.config.ConfigServiceRegistry
 import dev.sectile.kernel.plugin.scope.provider.ProtectedLazyProvider
 import dev.sectile.microkernel.Microkernel
 import dev.sectile.microkernel.plugin.scope.KernelPluginScopeFactory
-import dev.sectile.network.api.NetworkConnector
+import dev.sectile.network.api.Network
 import dev.sectile.network.api.packet.handler.PacketHandlerRegistry
 import dev.sectile.network.api.player.stage.StageHookRegistry
 import dev.sectile.network.api.player.stage.StageHooks
@@ -65,7 +65,7 @@ private fun startSDK() {
     KernelPluginScopeFactory.registerDefaultProvider { ScannerProvider() }
     KernelPluginScopeFactory.registerDefaultProvider {
         ProtectedLazyProvider(PacketHandlerRegistry::class.java) {
-            ScopedPacketHandlerProvider(NetworkConnector.packetHandlers)
+            ScopedPacketHandlerProvider(Network.packetHandlers)
         }
     }
     KernelPluginScopeFactory.registerDefaultProvider {

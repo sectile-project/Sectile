@@ -4,9 +4,8 @@ import dev.sectile.engine.api.Engine
 import dev.sectile.engine.api.MessageReceiver
 import dev.sectile.engine.api.player.Player
 import dev.sectile.engine.chat.color.Color
-import dev.sectile.network.api.NetworkConnector
+import dev.sectile.network.api.Network
 import dev.sectile.network.api.packet.OutboundPacket
-import dev.sectile.network.api.player.connection.PlayerConnection
 import dev.sectile.network.protocol.chat.outbound.RawMessagePacket
 import dev.sectile.network.protocol.chat.outbound.ServerMessagePacket
 import dev.sectile.network.protocol.shared.contracts.FormattedMessageData
@@ -97,58 +96,22 @@ class Message(
 
     fun toPacket(): OutboundPacket = if (isRaw) RawMessagePacket(rawText, messageId) else ServerMessagePacket(this)
 
-    fun sendTo(player: Player) {
-        if (player.connection.isOnline()) {
-            player.connection.sendPacket(toPacket())
-        }
-    }
-
     fun sendTo(receiver: MessageReceiver) {
-        if (receiver is Player) {
-            sendTo(receiver)
-        } else {
+        if (receiver !is Player) {
             receiver.receiveMessage(toPlainText())
+            return
+        }
+        if (receiver.connection.isOnline()) {
+            receiver.connection.sendPacket(toPacket())
         }
     }
 
-    fun sendTo(vararg receivers: MessageReceiver) {
-        if (receivers.isEmpty()) return
-        dispatchAll(receivers.asIterable())
-    }
-
-    fun sendTo(receivers: Iterable<MessageReceiver>) {
-        dispatchAll(receivers)
+    fun sendTo(receivers: Collection<MessageReceiver>) {
+        Network.packetsSender.lazySendPacket(receivers, toPacket())
     }
 
     fun broadcast() {
         sendTo(Engine.players.all())
-    }
-
-    private fun dispatchAll(receivers: Iterable<MessageReceiver>) {
-        val connections = ArrayList<PlayerConnection>()
-        var plain: String? = null
-        for (receiver in receivers) {
-            if (receiver is Player) {
-                val conn = receiver.connection
-                if (conn.isOnline()) {
-                    connections.add(conn)
-                }
-            } else {
-                val text = plain ?: toPlainText().also { plain = it }
-                receiver.receiveMessage(text)
-            }
-        }
-
-        if (connections.isEmpty()) return
-
-        val packet = toPacket()
-        if (connections.size > 1 && NetworkConnector.isInitialized()) {
-            NetworkConnector.packetsSender.sendPacket(connections, packet)
-        } else {
-            for (conn in connections) {
-                conn.sendPacket(packet)
-            }
-        }
     }
 
     private fun setFlag(enabled: Boolean, mask: Int) {

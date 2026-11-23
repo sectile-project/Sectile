@@ -1,7 +1,7 @@
 package dev.sectile.network.internal
 
 import dev.sectile.kernel.logger.Logger
-import dev.sectile.network.api.NetworkConnector
+import dev.sectile.network.api.Network
 import dev.sectile.network.api.packet.PacketRegistry
 import dev.sectile.network.api.packet.handler.PacketHandlerStorage
 import dev.sectile.network.api.player.connection.ConnectionStage
@@ -44,7 +44,7 @@ class NetworkInternalConnector private constructor(
             val connection = ServerConnection()
             ref = NetworkInternalConnector(config, connection, storages)
 
-            NetworkConnector.init(storages, PacketSenderInternal())
+            Network.init(storages, PacketSenderInternal())
 
             // Offload protocol/stage wiring so startup is not blocked by classloading Netty and stage handlers;
             // wiring completes before quic.bind accepts any client packet.

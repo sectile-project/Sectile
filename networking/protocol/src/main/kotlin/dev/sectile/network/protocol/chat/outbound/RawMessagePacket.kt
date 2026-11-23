@@ -6,6 +6,9 @@ import dev.sectile.network.api.packet.PacketDefinition
 import dev.sectile.network.protocol.DataSize
 import dev.sectile.network.protocol.ProtocolPacketTable
 
+private const val SERVER_MESSAGE_HEADER_SIZE = 2
+private const val FORMATTED_MESSAGE_FIXED_SIZE = 40
+
 /**
  * Lightweight outbound `ServerMessage` packet for plain chat messages
  * without allocating full `FormattedMessage` trees.
@@ -52,10 +55,5 @@ class RawMessagePacket(
 
         if (rawBytes != null) buf.writeVarBytes(rawBytes)
         if (idBytes != null) buf.writeVarBytes(idBytes)
-    }
-
-    companion object {
-        private const val SERVER_MESSAGE_HEADER_SIZE = 2
-        private const val FORMATTED_MESSAGE_FIXED_SIZE = 40
     }
 }

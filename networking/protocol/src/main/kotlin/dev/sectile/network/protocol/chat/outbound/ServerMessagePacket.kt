@@ -9,6 +9,18 @@ import dev.sectile.network.protocol.ProtocolFormatException
 import dev.sectile.network.protocol.ProtocolPacketTable
 import dev.sectile.network.protocol.shared.contracts.FormattedMessageData
 
+private const val MAX_NESTING_DEPTH: Int = 32
+private const val HEADER_SIZE = 2
+private const val FORMATTED_MESSAGE_FIXED_SIZE = 40
+private const val HEX_COLOR_LENGTH = 7
+private const val HEX_COLOR_WIRE_SIZE = 1 + HEX_COLOR_LENGTH
+
+private val HEX_DIGITS = byteArrayOf(
+    '0'.code.toByte(), '1'.code.toByte(), '2'.code.toByte(), '3'.code.toByte(),
+    '4'.code.toByte(), '5'.code.toByte(), '6'.code.toByte(), '7'.code.toByte(),
+    '8'.code.toByte(), '9'.code.toByte(), 'A'.code.toByte(), 'B'.code.toByte(),
+    'C'.code.toByte(), 'D'.code.toByte(), 'E'.code.toByte(), 'F'.code.toByte())
+
 class ServerMessagePacket(
     var message: FormattedMessageData? = null,
     var chatType: Byte = 0,
@@ -39,8 +51,8 @@ class ServerMessagePacket(
         }
 
         var total = FORMATTED_MESSAGE_FIXED_SIZE
-        node.rawText?.let { total += DataSize.varBytesSize(it.encodeValidatedUtf8()) }
-        node.messageId?.let { total += DataSize.varBytesSize(it.encodeValidatedUtf8()) }
+        node.rawText?.let { total += DataSize.varStringSize(it) }
+        node.messageId?.let { total += DataSize.varStringSize(it) }
         val children = node.children
         if (children.isNotEmpty()) {
             if (children.size > DataSize.MAX_ARRAY_LENGTH) {
@@ -51,7 +63,7 @@ class ServerMessagePacket(
         if (node.colorRgb >= 0) {
             total += HEX_COLOR_WIRE_SIZE
         }
-        node.link?.let { total += DataSize.varBytesSize(it.encodeValidatedUtf8()) }
+        node.link?.let { total += DataSize.varStringSize(it) }
         return total
     }
 
@@ -125,25 +137,11 @@ class ServerMessagePacket(
 
     private fun writeHexColor(buf: WriteBuffer, rgb: Int) {
         buf.writeByte(HEX_COLOR_LENGTH)
-        buf.writeByte('#'.code)
+        buf.writeByte('#'.code.toByte())
         val masked = rgb and 0xFFFFFF
         for (shift in 20 downTo 0 step 4) {
             buf.writeByte(HEX_DIGITS[(masked ushr shift) and 0xF])
         }
-    }
-
-    companion object {
-        const val MAX_NESTING_DEPTH: Int = 32
-        private const val HEADER_SIZE = 2
-        private const val FORMATTED_MESSAGE_FIXED_SIZE = 40
-        private const val HEX_COLOR_LENGTH = 7
-        private const val HEX_COLOR_WIRE_SIZE = 1 + HEX_COLOR_LENGTH
-        private val HEX_DIGITS = intArrayOf(
-            '0'.code, '1'.code, '2'.code, '3'.code,
-            '4'.code, '5'.code, '6'.code, '7'.code,
-            '8'.code, '9'.code, 'A'.code, 'B'.code,
-            'C'.code, 'D'.code, 'E'.code, 'F'.code,
-        )
     }
 }
 

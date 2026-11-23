@@ -6,7 +6,7 @@ import dev.sectile.engine.internal.registry.InternalPlayerRegistry
 import dev.sectile.engine.internal.registry.InternalWorldRegistry
 import dev.sectile.engine.world.handler.MovementHandler
 import dev.sectile.kernel.logger.Logger
-import dev.sectile.network.api.NetworkConnector
+import dev.sectile.network.api.Network
 import dev.sectile.network.api.player.connection.ConnectionStage
 import dev.sectile.network.api.player.stage.StageHooks
 import dev.sectile.network.api.player.stage.StageSteps
@@ -36,7 +36,7 @@ object WorldBootstrap {
         InternalWorldRegistry.register(SimpleWorld(DEFAULT_WORLD_ID, "Default"))
 
         registerJoinHook(logger)
-        NetworkConnector.packetHandlers.add(MovementHandler)
+        Network.packetHandlers.add(MovementHandler)
     }
 
     /** Creates the player when the connection reaches POST_LOGIN. */

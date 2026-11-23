@@ -2,7 +2,7 @@ package dev.sectile.engine.command
 
 import dev.sectile.engine.api.Engine
 import dev.sectile.engine.api.command.CommandDispatcher
-import dev.sectile.network.api.NetworkConnector
+import dev.sectile.network.api.Network
 import dev.sectile.network.api.packet.handler.on
 import dev.sectile.network.api.player.connection.ConnectionKey
 import dev.sectile.network.api.player.connection.ConnectionStage
@@ -42,7 +42,7 @@ internal object CommandPacketHandler {
     }
 
     private fun registerCommandChatHandler(dispatcher: CommandDispatcher) {
-        NetworkConnector.packetHandlers.on(ProtocolPacketTable.CHAT_MESSAGE, ::ChatMessagePacket) { connection, packet ->
+        Network.packetHandlers.on(ProtocolPacketTable.CHAT_MESSAGE, ::ChatMessagePacket) { connection, packet ->
             val message = packet.message
             if (message.isNullOrEmpty()) {
                 connection.disconnect(INVALID_CHAT_REASON)
@@ -61,7 +61,7 @@ internal object CommandPacketHandler {
     }
 
     private fun registerArgValuesHandler(dispatcher: CommandDispatcher) {
-        NetworkConnector.packetHandlers.on(
+        Network.packetHandlers.on(
             ProtocolPacketTable.ARG_VALUES_REQUEST,
             ::ArgValuesRequestPacket,
         ) { connection, packet ->
