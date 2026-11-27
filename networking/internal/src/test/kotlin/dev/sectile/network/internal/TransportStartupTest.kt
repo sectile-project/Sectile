@@ -1,6 +1,5 @@
 package dev.sectile.network.internal
 
-import dev.sectile.kernel.config.ConfigServiceRegistry
 import dev.sectile.network.internal.config.AuthConfig
 import dev.sectile.network.internal.config.AuthMode
 import dev.sectile.network.internal.config.NetworkConfig
@@ -32,10 +31,9 @@ class TransportStartupTest {
             maxPlayers = 10,
             auth = AuthConfig(AuthMode.INSECURE, null, null, null, null, null),
         )
-        ConfigServiceRegistry.register(JsonConfigService)
 
         // If startup fails, the future fails with the actual exception.
-        NetworkInternal.init(config, dev.sectile.network.internal.auth.TestLogger()).get(60, TimeUnit.SECONDS)
+        NetworkInternal.init(config, dev.sectile.network.internal.auth.TestLogger(), JsonConfigService).get(60, TimeUnit.SECONDS)
         assertTrue(true)
         NetworkInternal.shutdown()
     }
