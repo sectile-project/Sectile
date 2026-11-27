@@ -26,7 +26,7 @@ import dev.sectile.microkernel.Microkernel
 import dev.sectile.microkernel.plugin.scope.KernelPluginScopeFactory
 import dev.sectile.network.api.packet.handler.PacketHandlerRegistry
 import dev.sectile.network.api.player.stage.StageHookRegistry
-import dev.sectile.network.internal.NetworkInternalConnector
+import dev.sectile.network.internal.NetworkInternal
 import dev.sectile.network.internal.packet.scope.ScopedPacketHandlerProvider
 import dev.sectile.network.internal.stages.ScopedStageHookProvider
 import dev.sectile.network.internal.stages.StageHooks
@@ -52,8 +52,8 @@ fun startServer(publicClassLoader: ClassLoader, startTime: Long) {
     val console = loggersLoader.resolveConsole()
     registerBuiltinCommands(console, commandRegistry)
     loadNetwork(configService, logger)
-    WorldBootstrap.init(logger, NetworkInternalConnector.packetHandlers, StageHooks)
-    CommandBootstrap.initNetwork(logger, NetworkInternalConnector.packetHandlers, StageHooks)
+    WorldBootstrap.init(logger, NetworkInternal.packetHandlers, StageHooks)
+    CommandBootstrap.initNetwork(logger, NetworkInternal.packetHandlers, StageHooks)
 
     logger.info("Server started in ${System.currentTimeMillis() - startTime}ms")
 
@@ -64,7 +64,7 @@ private fun startSDK() {
     KernelPluginScopeFactory.registerDefaultProvider { ScannerProvider() }
     KernelPluginScopeFactory.registerDefaultProvider {
         ProtectedLazyProvider(PacketHandlerRegistry::class.java) {
-            ScopedPacketHandlerProvider(NetworkInternalConnector.packetHandlers)
+            ScopedPacketHandlerProvider(NetworkInternal.packetHandlers)
         }
     }
     KernelPluginScopeFactory.registerDefaultProvider {
@@ -88,7 +88,11 @@ private fun startEngine(): CommandRegistry {
 
 private fun registerBuiltinCommands(console: Console?, registry: CommandRegistry) {
     registry.register(
-        helpCommand(), whereAmICommand(),
-        whoCommand(), pluginCommand(),
-        authCommand(), stopCommand(console))
+        helpCommand(),
+        whereAmICommand(),
+        whoCommand(),
+        pluginCommand(),
+        authCommand(),
+        stopCommand(console),
+    )
 }

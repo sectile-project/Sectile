@@ -3,9 +3,6 @@ plugins {
 }
 
 dependencies {
-    implementation(library("jline-terminal"))
-    implementation(library("jline-reader"))
-
     implementation(project(":kernel:api"))
     implementation(project(":kernel:micro"))
 

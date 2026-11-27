@@ -12,7 +12,7 @@ import dev.sectile.sdk.command.subcommand
 fun pluginCommand() = command("plugin", "a") {
     aliases("pl")
 
-    executes { sender, _ -> listPlugins(sender)}
+    executes { sender, _ -> listPlugins(sender) }
 
     subcommand("list", "List registered plugins.") {
         executes { sender, _ -> listPlugins(sender) }

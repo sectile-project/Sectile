@@ -10,7 +10,6 @@ prefix:
 
 console:
   enable: true
-  useJLine: false # Allow highlight, auto-complete and more user-friendly experience but uses more resources (and increase startup time in 200ms)
 
   levels:
     debug: false

@@ -21,13 +21,6 @@
 
  -------------------------------------------------------------------------------
 
- This product depends on 'Jline3', is a Java library for handling console input, which can be obtained at:
-
-   LICENSE:
-     license/jline3-LICENSE.txt (BSD-3-Clause)
-   HOMEPAGE:
-     https://jline.org/
-
  This product depends on 'Netty', is an asynchronous event-driven network application framework for rapid development
  of maintainable high performance protocol servers & clients, which can be obtained at:
 

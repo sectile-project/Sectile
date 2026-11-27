@@ -2,7 +2,7 @@ package dev.sectile.network.internal.player
 
 import dev.sectile.kernel.Kernel
 import dev.sectile.kernel.logger.Logger
-import dev.sectile.network.internal.NetworkInternalConnector
+import dev.sectile.network.internal.NetworkInternal
 import dev.sectile.network.internal.io.DecodedPacket
 import dev.sectile.network.internal.io.PacketDecoder
 import dev.sectile.network.internal.io.PacketEncoder
@@ -97,11 +97,11 @@ class PlayerConnectionInitializer(private val logger: Logger) : ChannelInitializ
     private fun initPrimary(ch: QuicStreamChannel) {
         val quic = ch.parent()
         val connLogger = Kernel.loggerFactory.createLogger(quic.remoteSocketAddress().toString())
-        val connection = NettyPlayerConnection(ch, connLogger, NetworkInternalConnector.stageStorages)
+        val connection = NettyPlayerConnection(ch, connLogger, NetworkInternal.stageStorages)
         quic.attr(NettyPlayerConnection.PRIMARY_CONNECTION_KEY).set(connection)
 
         ch.attr(ProtocolUtil.STREAM_ROLE_KEY).set(StreamRole.DEFAULT)
-        connection.setReadTimeout(Duration.ofSeconds(NetworkInternalConnector.config.readTimeoutSeconds.toLong()))
+        connection.setReadTimeout(Duration.ofSeconds(NetworkInternal.config.readTimeoutSeconds.toLong()))
 
         ch.pipeline()
             .addLast("decoder", PacketDecoder(connLogger) { connection.stage to connection.currentStageStorage })

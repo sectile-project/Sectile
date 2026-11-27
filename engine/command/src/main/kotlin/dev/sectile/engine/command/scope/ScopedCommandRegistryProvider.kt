@@ -29,9 +29,7 @@ class ScopedCommandRegistryProvider(
         return wrapped
     }
 
-    override fun register(vararg commands: Command): List<CommandRegistration> {
-        return delegate.register(*commands).map { ScopedRegistration(it) }.also { registrations.addAll(it) }
-    }
+    override fun register(vararg commands: Command): List<CommandRegistration> = delegate.register(*commands).map { ScopedRegistration(it) }.also { registrations.addAll(it) }
 
     override fun unregister(name: String): Boolean {
         val target = synchronized(registrations) {

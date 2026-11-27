@@ -3,6 +3,7 @@ package dev.sectile.network.internal.auth.jwt
 import dev.sectile.kernel.config.ConfigSection
 import dev.sectile.kernel.config.ConfigServiceRegistry
 import dev.sectile.kernel.logger.Logger
+import dev.sectile.network.internal.NetworkInternal
 import java.security.Signature
 import java.security.cert.X509Certificate
 import java.time.Instant
@@ -213,7 +214,7 @@ class JWTValidator(
             return null
         }
 
-        val configService = ConfigServiceRegistry["json"]
+        val configService = NetworkInternal.json
         val base64Decoder = Base64.getUrlDecoder()
 
         val header = try {

@@ -2,9 +2,10 @@ package dev.sectile.boostrap.logger
 
 import dev.sectile.boostrap.console.Console
 import dev.sectile.boostrap.console.ConsoleSender
-import dev.sectile.boostrap.console.jline.JLineConsole
-import dev.sectile.boostrap.console.jline.createJLineConsole
+import dev.sectile.boostrap.console.InteractiveConsoleConfig
+import dev.sectile.boostrap.console.loadConsoleConfig
 import dev.sectile.boostrap.console.minimal.MinimalConsole
+import dev.sectile.boostrap.console.terminal.TerminalConsole
 import dev.sectile.boostrap.logger.console.ConsoleAppender
 import dev.sectile.boostrap.logger.file.FileAppender
 import dev.sectile.boostrap.logger.file.LogCompressor
@@ -13,8 +14,8 @@ import dev.sectile.boostrap.logger.type.NoOpLogger
 import dev.sectile.kernel.Kernel
 import dev.sectile.kernel.config.ConfigService
 import dev.sectile.kernel.logger.JavaLoggerFormatter
+import dev.sectile.kernel.logger.LogLevel
 import dev.sectile.kernel.logger.Logger
-import org.jline.reader.LineReader
 import java.io.File
 import java.io.IOException
 import java.io.PrintWriter
@@ -22,29 +23,30 @@ import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
-import java.util.concurrent.CompletableFuture
 
 class LoggersLoader {
 
     var console: Console? = null
     val consoleSender: ConsoleSender = ConsoleSender()
     private var printWriter: PrintWriter? = null
-    private var lineReader: LineReader? = null
     private var consoleAppender: ConsoleAppender? = null
-    private var consoleFuture: CompletableFuture<Console>? = null
 
     fun load(configService: ConfigService): Logger {
+        val consoleConfig = loadConsoleConfig(configService)
         val section = configService.createIfAbsentAndLoad("logger")
         val config = LoggerConfig(section)
         if (!config.enable) {
-            console = MinimalConsole(consoleSender)
+            createConsole(consoleConfig)
             return NoOpLogger()
         }
 
-        createConsole(config)
+        createConsole(consoleConfig)
 
         val ringBuffer = LogRingBuffer()
         val consoleAppender = loadConsoleLogger(config.console)
+        (console as? TerminalConsole)?.let { terminalConsole ->
+            consoleAppender?.attachTerminal(terminalConsole.lineReader::printAbove)
+        }
         val fileAppender = loadFileLogger(config.logs)
         val autoFlush = config.logs.autoFlush
 
@@ -66,6 +68,10 @@ class LoggersLoader {
                 processor.join(5000)
             } catch (_: InterruptedException) {}
         }
+        val enabledLevels = computeEnabledLevels(
+            if (consoleAppender != null) config.console.levels else null,
+            if (fileAppender != null) config.logs.levels else null,
+        )
         val logger = BoostrapLogger(
             JavaLoggerFormatter,
             ringBuffer,
@@ -74,35 +80,23 @@ class LoggersLoader {
             prefix.info,
             prefix.warn,
             prefix.error,
+            enabledLevels,
         )
         consoleSender.attachLogger(logger)
 
         return logger
     }
 
-    fun resolveConsole(): Console? {
-        val pending = consoleFuture ?: return console
-        val resolved = pending.join()
-        consoleFuture = null
-        console = resolved
-        if (resolved is JLineConsole) {
-            consoleAppender?.attachJLine(resolved.terminal.writer(), resolved.reader)
-        }
-        return resolved
-    }
+    fun resolveConsole(): Console? = console
 
-    private fun createConsole(config: LoggerConfig) {
+    private fun createConsole(config: InteractiveConsoleConfig) {
         printWriter = PrintWriter(System.out)
-        lineReader = null
-
-        if (config.console.useJLine) {
-            // Build JLine terminal and reader off the startup thread; attached before console.run().
-            consoleFuture = CompletableFuture.supplyAsync {
-                createJLineConsole(consoleSender) ?: MinimalConsole(consoleSender)
-            }
-            return
+        console = if (config.interactive) {
+            runCatching { TerminalConsole(consoleSender, config.terminal) }
+                .getOrElse { MinimalConsole(consoleSender) }
+        } else {
+            MinimalConsole(consoleSender)
         }
-        console = MinimalConsole(consoleSender)
     }
 
     private fun loadConsoleLogger(console: ConsoleConfig): ConsoleAppender? {
@@ -112,7 +106,6 @@ class LoggersLoader {
         val styles = console.styles
         return ConsoleAppender(
             printWriter,
-            lineReader,
             console.levels,
             styles.debug,
             styles.log,
@@ -144,6 +137,19 @@ class LoggersLoader {
             System.err.println("Can't compress old log file")
             e.printStackTrace(System.err)
         }
+    }
+
+    private fun computeEnabledLevels(vararg levelsList: LoggerLevels?): Int {
+        var mask = 0
+        for (levels in levelsList) {
+            if (levels == null) continue
+            if (levels.debug) mask = mask or (1 shl LogLevel.DEBUG.ordinal)
+            if (levels.log) mask = mask or (1 shl LogLevel.LOG.ordinal)
+            if (levels.info) mask = mask or (1 shl LogLevel.INFO.ordinal)
+            if (levels.warn) mask = mask or (1 shl LogLevel.WARN.ordinal)
+            if (levels.error) mask = mask or (1 shl LogLevel.ERROR.ordinal)
+        }
+        return mask
     }
 
     private fun createLogChannel(path: Path): FileChannel? = try {

@@ -56,6 +56,28 @@ value class Color private constructor(
         fun green(greenType: Int): Color = Color((greenType and 0xFF) shl 8)
 
         fun blue(blueType: Int): Color = Color(blueType and 0xFF)
+
+        fun byName(name: String): Color? {
+            return when (name.lowercase()) {
+                "black" -> BLACK
+                "dark_blue" -> DARK_BLUE
+                "dark_green" -> DARK_GREEN
+                "dark_aqua" -> DARK_AQUA
+                "dark_red" -> DARK_RED
+                "dark_purple" -> DARK_PURPLE
+                "gold" -> GOLD
+                "gray" -> GRAY
+                "dark_gray" -> DARK_GRAY
+                "blue" -> BLUE
+                "green" -> GREEN
+                "aqua" -> AQUA
+                "red" -> RED
+                "light_purple" -> LIGHT_PURPLE
+                "yellow" -> YELLOW
+                "white" -> WHITE
+                else -> null
+            }
+        }
     }
 
     override fun toString(): String = toHex()

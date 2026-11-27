@@ -5,6 +5,7 @@ import dev.sectile.kernel.config.ConfigService
 import dev.sectile.kernel.config.ConfigServiceRegistry
 import dev.sectile.kernel.config.section.MapConfigSection
 import dev.sectile.kernel.logger.Logger
+import dev.sectile.network.internal.NetworkInternal
 import dev.sectile.network.internal.auth.jwt.JwkSet
 import java.net.URI
 import java.net.http.HttpRequest
@@ -59,8 +60,6 @@ class SessionServiceClient(
     private val newSessionUri = URI.create("${this.baseUrl}/game-session/new")
     private val refreshSessionUri = URI.create("${this.baseUrl}/game-session/refresh")
 
-    private val json: ConfigService get() = ConfigServiceRegistry["json"]
-
     /**
      * Requests an authorization grant for the player who is connecting.
      *
@@ -76,7 +75,7 @@ class SessionServiceClient(
     ): String? {
         val body = jsonBody("identityToken" to identityToken, "aud" to audience)
         val response = call("auth-grant", post(authGrantUri, body, bearerToken)) ?: return null
-        return json.load(response).getString("authorizationGrant")
+        return NetworkInternal.json.load(response).getString("authorizationGrant")
     }
 
     /**
@@ -93,7 +92,7 @@ class SessionServiceClient(
     ): String? {
         val body = jsonBody("authorizationGrant" to authorizationGrant, "x509Fingerprint" to x509Fingerprint)
         val response = call("auth-token", post(authTokenUri, body, bearerToken)) ?: return null
-        return json.load(response).getString("accessToken")
+        return NetworkInternal.json.load(response).getString("accessToken")
     }
 
     /** Downloads the JWKS from the Session Service. */
@@ -101,7 +100,7 @@ class SessionServiceClient(
         val request = base(jwksUri).GET().build()
         val response = call("jwks", request, quiet = true) ?: return null
         return try {
-            JwkSet.parse(json.load(response))
+            JwkSet.parse(NetworkInternal.json.load(response))
         } catch (_: Exception) {
             null
         }
@@ -150,7 +149,7 @@ class SessionServiceClient(
             .build()
         val response = call("get-profiles", request) ?: return emptyList()
         return try {
-            val profiles = json.load(response)["profiles"] as? Collection<*> ?: return emptyList()
+            val profiles = NetworkInternal.json.load(response)["profiles"] as? Collection<*> ?: return emptyList()
             profiles.mapNotNull { element ->
                 val section = element as? ConfigSection ?: return@mapNotNull null
                 val uuid = section.getString("uuid") ?: return@mapNotNull null
@@ -163,7 +162,7 @@ class SessionServiceClient(
     }
 
     private fun parseSession(body: ByteArray): GameSession? = try {
-        val section = json.load(body)
+        val section = NetworkInternal.json.load(body)
         val sessionToken = section.getString("sessionToken")
         val identityToken = section.getString("identityToken")
         if (sessionToken.isNullOrEmpty() || identityToken.isNullOrEmpty()) {
@@ -176,7 +175,7 @@ class SessionServiceClient(
         null
     }
 
-    private fun jsonBody(vararg entries: Pair<String, String>): String = json.saveIntoString(MapConfigSection(linkedMapOf(*entries)))
+    private fun jsonBody(vararg entries: Pair<String, String>): String = NetworkInternal.json.saveIntoString(MapConfigSection(linkedMapOf(*entries)))
 
     private fun base(uri: URI): HttpRequest.Builder = HttpRequest.newBuilder(uri)
         .header("Accept", "application/json")

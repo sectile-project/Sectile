@@ -4,7 +4,7 @@ import dev.sectile.kernel.Kernel
 import dev.sectile.kernel.config.ConfigSection
 import dev.sectile.kernel.config.ConfigService
 import dev.sectile.kernel.logger.Logger
-import dev.sectile.network.internal.NetworkInternalConnector
+import dev.sectile.network.internal.NetworkInternal
 import dev.sectile.network.internal.config.AuthConfig
 import dev.sectile.network.internal.config.AuthMode
 import dev.sectile.network.internal.config.NetworkConfig
@@ -37,7 +37,7 @@ fun loadNetwork(configService: ConfigService, logger: Logger) {
     )
 
     val transportLogger = Kernel.loggerFactory.createLogger("QuicTransport")
-    NetworkInternalConnector.init(networkConfig, transportLogger).whenComplete { _: Any?, error: Throwable? ->
+    NetworkInternal.init(networkConfig, transportLogger).whenComplete { _: Any?, error: Throwable? ->
         if (error != null) {
             logger.error("Could not start the network transport", error)
         } else {
@@ -45,7 +45,7 @@ fun loadNetwork(configService: ConfigService, logger: Logger) {
         }
     }
 
-    Kernel.addStopTask { NetworkInternalConnector.shutdown() }
+    Kernel.addStopTask { NetworkInternal.shutdown() }
 }
 
 private fun loadAuth(section: ConfigSection, logger: Logger): AuthConfig {

@@ -1,7 +1,7 @@
 package dev.sectile.network.internal.quic
 
 import dev.sectile.kernel.logger.Logger
-import dev.sectile.network.internal.NetworkInternalConnector
+import dev.sectile.network.internal.NetworkInternal
 import dev.sectile.network.internal.player.PlayerConnectionInitializer
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
@@ -24,7 +24,7 @@ internal class QuicDatagramHandler(
             .sslContext(sslContext)
             // The original server does not use tokens (no Retry): NoQuicTokenHandler avoids the extra RTT.
             .tokenHandler(NoQuicTokenHandler.INSTANCE)
-            .maxIdleTimeout(NetworkInternalConnector.config.readTimeoutSeconds.toLong(), TimeUnit.SECONDS)
+            .maxIdleTimeout(NetworkInternal.config.readTimeoutSeconds.toLong(), TimeUnit.SECONDS)
             .ackDelayExponent(3)
             // Stream windows and limits as in the original server's initConfig/applyTransportConfig.
             .initialMaxData(QuicProtocol.INITIAL_CONNECTION_WINDOW)

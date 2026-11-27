@@ -1,9 +1,8 @@
 package dev.sectile.network.internal.quic
 
 import dev.sectile.kernel.logger.Logger
-import dev.sectile.network.internal.NetworkInternalConnector
+import dev.sectile.network.internal.NetworkInternal
 import dev.sectile.network.internal.io.ProtocolUtil
-import dev.sectile.network.internal.player.DisconnectSupport
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.handler.codec.quic.QuicChannel
@@ -55,7 +54,7 @@ internal class QuicConnectionHandler(private val logger: Logger) : ChannelInboun
 
         extractSni(engine)?.let { channel.attr(ProtocolUtil.SNI_HOSTNAME_KEY).set(it) }
 
-        val config = NetworkInternalConnector.config
+        val config = NetworkInternal.config
         if (config.rateLimitEnabled) {
             channel.attr(ProtocolUtil.RATE_LIMIT_KEY).set(
                 TokenBucket(

@@ -1,5 +1,7 @@
 package dev.sectile.network.internal
 
+import dev.sectile.kernel.config.ConfigService
+import dev.sectile.kernel.config.ConfigServiceRegistry
 import dev.sectile.kernel.logger.Logger
 import dev.sectile.network.api.Network
 import dev.sectile.network.api.packet.PacketRegistry
@@ -21,14 +23,15 @@ import io.netty.buffer.Unpooled
 import java.util.EnumMap
 import java.util.concurrent.CompletableFuture
 
-class NetworkInternalConnector private constructor(
+class NetworkInternal private constructor(
     private val config: NetworkConfig,
     private val connection: ServerConnection,
+    private val jsonService: ConfigService // prevent random users override internal json
 ) {
     companion object {
 
         @Volatile
-        private var ref: NetworkInternalConnector? = null
+        private var ref: NetworkInternal? = null
 
         internal val stageStorages: Map<ConnectionStage, PacketHandlerStorage> =
             EnumMap<ConnectionStage, PacketHandlerStorage>(ConnectionStage::class.java).apply {
@@ -47,11 +50,16 @@ class NetworkInternalConnector private constructor(
 
         val config: NetworkConfig get() = connector.config
 
+        val json: ConfigService get() {
+            val instance = ref ?: return ConfigServiceRegistry["json"];
+            return instance.jsonService
+        }
+
         fun init(config: NetworkConfig, logger: Logger): CompletableFuture<Unit> {
             if (ref != null) error("Network internal connector already initialized")
 
             val connection = ServerConnection()
-            ref = NetworkInternalConnector(config, connection)
+            ref = NetworkInternal(config, connection, ConfigServiceRegistry["json"])
 
             Network.init(PacketSenderInternal())
 
@@ -91,7 +99,7 @@ class NetworkInternalConnector private constructor(
             }
         }
 
-        private val connector: NetworkInternalConnector
+        private val connector: NetworkInternal
             get() = ref ?: error("Network internal connector not initialized")
     }
 }

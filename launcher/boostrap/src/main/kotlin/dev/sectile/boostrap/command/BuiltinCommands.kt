@@ -20,14 +20,14 @@ fun stopCommand(console: Console?) = command("stop") {
 fun helpCommand() = command("help", "Display help command") {
     arg("command", "Command name to inspect") {
         Engine.commands.all
-            .filter { sender.hasPermission(it.permission) }
+            .filter { it.permission.isEmpty() || sender.hasPermission(it.permission) }
             .map { it.name }
     }
     executes { sender, args ->
         val target = args.nextString()
         if (target != null) {
             val command = Engine.commands.resolve(target)
-            if (command == null || (!sender.hasPermission(command.permission))) {
+            if (command == null || (command.permission.isNotEmpty() && !sender.hasPermission(command.permission))) {
                 sender.receiveMessage("Unknown command '/$target'.")
                 return@executes
             }
@@ -46,7 +46,7 @@ fun helpCommand() = command("help", "Display help command") {
         }
 
         val visible = Engine.commands.all
-            .filter { sender.hasPermission(it.permission) }
+            .filter { it.permission.isEmpty() || sender.hasPermission(it.permission) }
             .sortedBy { it.name }
 
         if (visible.isEmpty()) {

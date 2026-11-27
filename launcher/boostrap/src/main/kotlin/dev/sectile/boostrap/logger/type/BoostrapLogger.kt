@@ -15,6 +15,7 @@ class BoostrapLogger(
     private val infoPrefix: String,
     private val warnPrefix: String,
     private val errorPrefix: String,
+    private val enabledLevels: Int = ALL_LEVELS,
 ) : Logger {
 
     private fun getSpyLoggers(): Set<Logger> {
@@ -22,39 +23,69 @@ class BoostrapLogger(
         return spy.getLoggers()
     }
 
-    override fun debug(message: String) {
-        ringBuffer.push(LogLevel.DEBUG, debugPrefix, message, null)
+    private fun isEnabled(level: LogLevel): Boolean = (enabledLevels and (1 shl level.ordinal)) != 0
 
-        getSpyLoggers().forEach { it.debug(message) }
+    override fun debug(message: String) {
+        if (isEnabled(LogLevel.DEBUG)) {
+            ringBuffer.push(LogLevel.DEBUG, debugPrefix, message, null)
+        }
+        val spies = getSpyLoggers()
+        if (spies.isNotEmpty()) {
+            spies.forEach { it.debug(message) }
+        }
     }
 
     override fun log(message: String) {
-        ringBuffer.push(LogLevel.LOG, logPrefix, message, null)
-
-        getSpyLoggers().forEach { it.log(message) }
+        if (isEnabled(LogLevel.LOG)) {
+            ringBuffer.push(LogLevel.LOG, logPrefix, message, null)
+        }
+        val spies = getSpyLoggers()
+        if (spies.isNotEmpty()) {
+            spies.forEach { it.log(message) }
+        }
     }
 
     override fun info(message: String) {
-        ringBuffer.push(LogLevel.INFO, infoPrefix, message, null)
-
-        getSpyLoggers().forEach { it.info(message) }
+        if (isEnabled(LogLevel.INFO)) {
+            ringBuffer.push(LogLevel.INFO, infoPrefix, message, null)
+        }
+        val spies = getSpyLoggers()
+        if (spies.isNotEmpty()) {
+            spies.forEach { it.info(message) }
+        }
     }
 
     override fun warn(message: String) {
-        ringBuffer.push(LogLevel.WARN, warnPrefix, message, null)
-
-        getSpyLoggers().forEach { it.warn(message) }
+        if (isEnabled(LogLevel.WARN)) {
+            ringBuffer.push(LogLevel.WARN, warnPrefix, message, null)
+        }
+        val spies = getSpyLoggers()
+        if (spies.isNotEmpty()) {
+            spies.forEach { it.warn(message) }
+        }
     }
 
     override fun error(message: String) {
-        ringBuffer.push(LogLevel.ERROR, errorPrefix, message, null)
-
-        getSpyLoggers().forEach { it.error(message) }
+        if (isEnabled(LogLevel.ERROR)) {
+            ringBuffer.push(LogLevel.ERROR, errorPrefix, message, null)
+        }
+        val spies = getSpyLoggers()
+        if (spies.isNotEmpty()) {
+            spies.forEach { it.error(message) }
+        }
     }
 
     override fun error(message: String, throwable: Throwable) {
-        ringBuffer.push(LogLevel.ERROR, errorPrefix, message, throwable)
+        if (isEnabled(LogLevel.ERROR)) {
+            ringBuffer.push(LogLevel.ERROR, errorPrefix, message, throwable)
+        }
+        val spies = getSpyLoggers()
+        if (spies.isNotEmpty()) {
+            spies.forEach { it.error(message, throwable) }
+        }
+    }
 
-        getSpyLoggers().forEach { it.error(message, throwable) }
+    companion object {
+        const val ALL_LEVELS: Int = -1
     }
 }

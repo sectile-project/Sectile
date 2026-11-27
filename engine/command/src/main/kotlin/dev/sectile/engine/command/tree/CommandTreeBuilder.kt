@@ -100,5 +100,5 @@ internal object CommandTreeBuilder {
         return "$prefix ${args.joinToString(" ") { "<${it.name}>" }}"
     }
 
-    private fun hasPermission(sender: CommandSender, permission: String?): Boolean = permission == null || sender.hasPermission(permission)
+    private fun hasPermission(sender: CommandSender, permission: String): Boolean = permission.isEmpty() || sender.hasPermission(permission)
 }

@@ -21,7 +21,6 @@ class PrefixConfig(section: ConfigSection) {
 
 class ConsoleConfig(section: ConfigSection) {
     val enable = section.getBoolean("enable", true)
-    val useJLine = section.getBoolean("useJLine", false)
     val levels = LoggerLevels(section.getSection("levels"))
     val styles = StylesConfig(section.getSection("styles"))
 }

@@ -189,8 +189,7 @@ class DefaultCommandRegistry(
             return false
         }
 
-        val rawCommand = commandLine.trim().removePrefix("/").trimStart()
-        logger.info("${sender.name} executed command: /$rawCommand")
+        logger.info("${sender.name} executed command: /$commandLine")
 
         return try {
             withCommandClassLoader(command.javaClass.classLoader) {
@@ -200,7 +199,7 @@ class DefaultCommandRegistry(
             sender.receiveMessage(ex.message ?: "Invalid command arguments.")
             false
         } catch (thrown: Throwable) {
-            logger.error("Failed to execute command '/$rawCommand' for ${sender.name}", thrown)
+            logger.error("Failed to execute command '/$commandLine' for ${sender.name}", thrown)
             val detail = thrown.message?.takeIf { it.isNotBlank() } ?: thrown.javaClass.simpleName
             sender.receiveMessage("An error occurred while executing '/$commandName': $detail")
             false
@@ -303,9 +302,9 @@ class DefaultCommandRegistry(
         for (alias in aliases) {
             if (alias.isBlank()) continue
             if (aliasesToName.remove(alias, canonical)) continue
-            for (entry in aliasesToName.entries) {
-                if (entry.key.equals(alias, ignoreCase = true) && entry.value == canonical) {
-                    aliasesToName.remove(entry.key, canonical)
+            for ((key, value) in aliasesToName) {
+                if (key.equals(alias, ignoreCase = true) && value == canonical) {
+                    aliasesToName.remove(key, canonical)
                     break
                 }
             }

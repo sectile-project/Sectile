@@ -1,14 +1,13 @@
 package dev.sectile.network.internal.auth
 
-import dev.sectile.kernel.config.ConfigServiceRegistry
 import dev.sectile.kernel.config.section.MapConfigSection
 import dev.sectile.kernel.logger.Logger
 import dev.sectile.kernel.logger.logger
+import dev.sectile.network.internal.NetworkInternal
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Base64
 import java.util.UUID
-import kotlin.io.path.writeText
 
 /**
  * Server credentials for the Session Service.
@@ -51,7 +50,7 @@ object JwtClaims {
         if (second < 0 || token.indexOf('.', second + 1) >= 0) return 0L
         return try {
             val payload = Base64.getUrlDecoder().decode(token.substring(first + 1, second))
-            (ConfigServiceRegistry["json"].load(payload)["exp"] as? Number)?.toLong() ?: 0L
+            (NetworkInternal.json.load(payload)["exp"] as? Number)?.toLong() ?: 0L
         } catch (_: Exception) {
             0L
         }
@@ -203,7 +202,7 @@ object ServerAuthenticator {
         }
 
         return try {
-            val credentials = ConfigServiceRegistry["json"].load(file)
+            val credentials = NetworkInternal.json.load(file)
 
             val sessionToken = credentials.getString("sessionToken") ?: return null
             val identityToken = credentials.getString("identityToken") ?: return null
@@ -235,7 +234,7 @@ object ServerAuthenticator {
             ),
         )
         try {
-            Files.writeString(Path.of(CREDENTIALS_FILE), ConfigServiceRegistry["json"].saveIntoString(section))
+            Files.writeString(Path.of(CREDENTIALS_FILE), NetworkInternal.json.saveIntoString(section))
         } catch (e: Exception) {
             logger().error("Error while saving credentials", e)
         }
@@ -276,6 +275,4 @@ object ServerAuthenticator {
             ),
         )
     }
-
-    fun newAudience(): String = UUID.randomUUID().toString()
 }

@@ -1,0 +1,31 @@
+# Enable the interactive terminal with autocomplete and styling.
+# When disabled (or when stdin/stdout is not a TTY), falls back to a minimal line reader.
+# Minimal line reader uses less resources and improve startup time >30ms (recommended for pterodactyl)
+interactive: true
+
+# Default prompt printed before user input.
+prompt: "> "
+
+# Autocomplete behavior
+autocomplete:
+  while-typing: true
+  tab-completion: true
+  inline-ghost: true
+  accept-with-right-arrow: true
+  append-space-on-accept: true
+
+# Completion menu layout
+menu:
+  multi-column: true
+  max-rows: 6
+
+# Color palette.
+# Supports hex ("#FACC15", "#FFF", "0xFACC15") or named chat colors ("yellow", "dark_gray", "gold", ...).
+# Use "none" or "default" for prompt to keep the terminal's default color.
+colors:
+  prompt: "none"
+  ghost-text: "#6B7280"
+  menu-item: "#6B7280"
+  selected-item: "#FACC15"
+  scroll-hint: "#6B7280"
+  bold-selected-item: true

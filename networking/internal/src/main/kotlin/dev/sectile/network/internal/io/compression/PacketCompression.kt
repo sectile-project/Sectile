@@ -1,7 +1,7 @@
 package dev.sectile.network.internal.io.compression
 
 import com.github.luben.zstd.Zstd
-import dev.sectile.network.internal.NetworkInternalConnector
+import dev.sectile.network.internal.NetworkInternal
 import dev.sectile.network.internal.io.ProtocolException
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.ByteBufAllocator
@@ -12,7 +12,7 @@ object PacketCompression {
         val srcSize = src.readableBytes()
         if (srcSize == 0) return 0
 
-        val level = NetworkInternalConnector.config.zstdCompressionLevel
+        val level = NetworkInternal.config.zstdCompressionLevel
 
         if (src.isDirect && src.nioBufferCount() == 1 && dst.isDirect && dst.nioBufferCount() == 1) {
             val srcNio = src.internalNioBuffer(src.readerIndex(), srcSize)

@@ -1,7 +1,7 @@
 package dev.sectile.network.internal.auth
 
-import dev.sectile.kernel.config.ConfigServiceRegistry
 import dev.sectile.kernel.logger.logger
+import dev.sectile.network.internal.NetworkInternal
 import java.net.URI
 import java.net.URLEncoder
 import java.net.http.HttpRequest
@@ -80,7 +80,7 @@ class OAuthClient(
 
         val response = post(deviceAuthUri, body, acceptBadRequest = false) ?: return null
         return try {
-            val json = ConfigServiceRegistry["json"].load(response)
+            val json = NetworkInternal.json.load(response)
             val deviceCode = json.getString("device_code") ?: return null
             DeviceAuthorization(
                 deviceCode = deviceCode,
@@ -107,7 +107,7 @@ class OAuthClient(
     private fun postTokens(body: String): OAuthTokens? {
         val response = post(tokenUri, body, acceptBadRequest = true) ?: return null
         return try {
-            val json = ConfigServiceRegistry["json"].load(response)
+            val json = NetworkInternal.json.load(response)
             OAuthTokens(
                 accessToken = json.getString("access_token"),
                 refreshToken = json.getString("refresh_token"),

@@ -122,7 +122,7 @@ internal object CommandParser {
 
         if (command.subcommands.isNotEmpty()) {
             val visibleSubs = command.subcommands.filter {
-                it.permission == null || sender.hasPermission(it.permission!!)
+                it.permission.isEmpty() || sender.hasPermission(it.permission)
             }
             if (visibleSubs.isNotEmpty()) {
                 sender.receiveMessage("  Subcommands:")

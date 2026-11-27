@@ -7,18 +7,19 @@ import dev.sectile.boostrap.logger.MutableLogEntry;
 import dev.sectile.kernel.logger.LogLevel;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import org.jetbrains.annotations.Nullable;
-import org.jline.reader.LineReader;
+import java.util.function.Consumer;
 
 public final class ConsoleAppender implements LogAppender {
-  private volatile PrintWriter writer;
-  private volatile @Nullable LineReader lineReader;
+  private static final int MAX_RETAINED_BUFFER_CAPACITY = 16_384;
+
+  private final PrintWriter writer;
   private final ConsoleStyle[] styles;
-  private final StringBuilder lineBuffer = new StringBuilder(256);
+
+  private volatile Consumer<CharSequence> terminalPrinter;
+  private volatile StringBuilder terminalBuffer;
 
   public ConsoleAppender(
       final PrintWriter writer,
-      final @Nullable LineReader lineReader,
       final LoggerLevels loggerLevels,
       final ConsoleStyle debugStyle,
       final ConsoleStyle logStyle,
@@ -26,7 +27,6 @@ public final class ConsoleAppender implements LogAppender {
       final ConsoleStyle warnStyle,
       final ConsoleStyle errorStyle) {
     this.writer = writer;
-    this.lineReader = lineReader;
     this.styles = new ConsoleStyle[LogLevel.getEntries().size()];
     this.styles[LogLevel.DEBUG.ordinal()] = loggerLevels.getDebug() ? debugStyle : null;
     this.styles[LogLevel.INFO.ordinal()] = loggerLevels.getInfo() ? infoStyle : null;
@@ -35,9 +35,9 @@ public final class ConsoleAppender implements LogAppender {
     this.styles[LogLevel.ERROR.ordinal()] = loggerLevels.getError() ? errorStyle : null;
   }
 
-  public void attachJLine(final PrintWriter writer, final LineReader lineReader) {
-    this.writer = writer;
-    this.lineReader = lineReader;
+  public void attachTerminal(final Consumer<CharSequence> printer) {
+    this.terminalBuffer = new StringBuilder(512);
+    this.terminalPrinter = printer;
   }
 
   @Override
@@ -48,23 +48,8 @@ public final class ConsoleAppender implements LogAppender {
       return;
     }
 
-    final LineReader reader = this.lineReader;
-    if (reader != null && reader.isReading()) {
-      lineBuffer.setLength(0);
-      lineBuffer
-          .append(style.getPrefix())
-          .append(entry.prefix)
-          .append(style.getText())
-          .append(entry.message);
-
-      if (entry.throwable != null) {
-        final StringWriter sw = new StringWriter();
-        entry.throwable.printStackTrace(new PrintWriter(sw));
-        lineBuffer.append('\n').append(sw);
-      }
-      lineBuffer.append(style.getAfterText());
-      // printAbove clears the active prompt, prints the log line, and redraws the prompt below it.
-      reader.printAbove(lineBuffer.toString());
+    if (this.terminalPrinter != null) {
+      appendTo(terminalBuffer, style, entry);
       return;
     }
 
@@ -84,9 +69,34 @@ public final class ConsoleAppender implements LogAppender {
 
   @Override
   public void flush() {
+    final Consumer<CharSequence> printer = this.terminalPrinter;
+    if (printer != null) {
+      if (!terminalBuffer.isEmpty()) {
+        printer.accept(terminalBuffer);
+        terminalBuffer.setLength(0);
+        if (terminalBuffer.capacity() > MAX_RETAINED_BUFFER_CAPACITY) {
+          terminalBuffer.trimToSize();
+        }
+      }
+      return;
+    }
     writer.flush();
   }
 
   @Override
-  public void close() {}
+  public void close() {
+    flush();
+  }
+
+  private static void appendTo(
+      final StringBuilder sb, final ConsoleStyle style, final MutableLogEntry entry) {
+    sb.append(style.getPrefix()).append(entry.prefix).append(style.getText()).append(entry.message);
+    if (entry.throwable != null) {
+      sb.append('\n');
+      final StringWriter sw = new StringWriter();
+      entry.throwable.printStackTrace(new PrintWriter(sw));
+      sb.append(sw);
+    }
+    sb.append(style.getAfterText()).append('\n');
+  }
 }

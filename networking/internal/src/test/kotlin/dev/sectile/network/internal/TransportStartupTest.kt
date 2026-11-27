@@ -1,8 +1,10 @@
 package dev.sectile.network.internal
 
+import dev.sectile.kernel.config.ConfigServiceRegistry
 import dev.sectile.network.internal.config.AuthConfig
 import dev.sectile.network.internal.config.AuthMode
 import dev.sectile.network.internal.config.NetworkConfig
+import dev.sectile.sdk.bundled.config.json.JsonConfigService
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.util.concurrent.TimeUnit
@@ -30,10 +32,11 @@ class TransportStartupTest {
             maxPlayers = 10,
             auth = AuthConfig(AuthMode.INSECURE, null, null, null, null, null),
         )
+        ConfigServiceRegistry.register(JsonConfigService)
 
         // If startup fails, the future fails with the actual exception.
-        NetworkInternalConnector.init(config, dev.sectile.network.internal.auth.TestLogger()).get(60, TimeUnit.SECONDS)
+        NetworkInternal.init(config, dev.sectile.network.internal.auth.TestLogger()).get(60, TimeUnit.SECONDS)
         assertTrue(true)
-        NetworkInternalConnector.shutdown()
+        NetworkInternal.shutdown()
     }
 }

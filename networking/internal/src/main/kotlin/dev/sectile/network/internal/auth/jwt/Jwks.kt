@@ -4,6 +4,7 @@ import dev.sectile.kernel.config.ConfigSection
 import dev.sectile.kernel.config.ConfigServiceRegistry
 import dev.sectile.kernel.config.section.MapConfigSection
 import dev.sectile.kernel.logger.logger
+import dev.sectile.network.internal.NetworkInternal
 import dev.sectile.network.internal.auth.SessionServiceClient
 import java.nio.file.Files
 import java.nio.file.Path
@@ -138,7 +139,7 @@ class JwksCache(private val sessionService: SessionServiceClient) {
         }
 
         return try {
-            JwkSet.parse(ConfigServiceRegistry["json"].load(file))
+            JwkSet.parse(NetworkInternal.json.load(file))
         } catch (e: Exception) {
             logger().error("Failed to load jwks.json", e)
             null
@@ -156,7 +157,7 @@ class JwksCache(private val sessionService: SessionServiceClient) {
                 }
             }
             val section = MapConfigSection(linkedMapOf("keys" to keys))
-            ConfigServiceRegistry["json"].save(Path.of(CACHE_FILE), section)
+            NetworkInternal.json.save(Path.of(CACHE_FILE), section)
         } catch (e: Exception) {
             logger().error("Failed to save jwks.json", e)
         }

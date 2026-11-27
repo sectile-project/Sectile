@@ -66,7 +66,14 @@ public final class LogProcessorThread extends Thread {
       if (processed == 0) {
         long waitNanos = nextFlushAt - System.nanoTime();
         if (waitNanos > 0) {
-          LockSupport.parkNanos(this, waitNanos);
+          ringBuffer.markConsumerParked();
+          try {
+            if (running && ringBuffer.isEmpty()) {
+              LockSupport.parkNanos(this, waitNanos);
+            }
+          } finally {
+            ringBuffer.clearConsumerParked();
+          }
         }
       }
     }

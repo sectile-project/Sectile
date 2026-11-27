@@ -1,6 +1,7 @@
 package dev.sectile.boostrap.logger;
 
 import dev.sectile.kernel.logger.LogLevel;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 import org.jetbrains.annotations.NotNull;
@@ -22,6 +23,7 @@ public final class LogRingBuffer {
   // Single-consumer cursor.
   private long readIndex = 0L;
   private volatile Thread consumerThread;
+  private final AtomicBoolean consumerParked = new AtomicBoolean(false);
 
   private final AtomicLong dropped = new AtomicLong(0L);
 
@@ -65,7 +67,9 @@ public final class LogRingBuffer {
 
           // Volatile write: publishes prefix/message/throwable to consumer.
           entry.sequence = sequence + 1L;
-          LockSupport.unpark(consumerThread);
+          if (consumerParked.get() && consumerParked.compareAndSet(true, false)) {
+            LockSupport.unpark(consumerThread);
+          }
           return true;
         }
       } else if (diff < 0L) {
@@ -130,5 +134,13 @@ public final class LogRingBuffer {
 
   void setConsumerThread(final Thread consumerThread) {
     this.consumerThread = consumerThread;
+  }
+
+  void markConsumerParked() {
+    consumerParked.set(true);
+  }
+
+  void clearConsumerParked() {
+    consumerParked.set(false);
   }
 }
