@@ -7,7 +7,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 object YamlConfigService : AbstractConfigService() {
-    override val fileExtensions = listOf("yml", "yaml")
+    override val fileExtensions = arrayOf("yml", "yaml")
 
     override fun load(path: Path): ConfigSection = load(Files.readAllBytes(path))
     override fun load(byteArray: ByteArray, offset: Int, length: Int): ConfigSection = StrictYamlParser().parse(byteArray, offset, length)

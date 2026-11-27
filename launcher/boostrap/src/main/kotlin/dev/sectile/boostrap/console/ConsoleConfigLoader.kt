@@ -3,21 +3,15 @@ package dev.sectile.boostrap.console
 import dev.sectile.boostrap.terminal.config.TerminalColors
 import dev.sectile.boostrap.terminal.config.TerminalConfig
 import dev.sectile.engine.chat.color.Color
-import dev.sectile.kernel.config.ConfigSection
 import dev.sectile.kernel.config.ConfigService
 import java.util.Locale
 
-data class InteractiveConsoleConfig(
-    val interactive: Boolean,
-    val terminal: TerminalConfig,
-)
+fun loadConsoleConfig(configService: ConfigService): TerminalConfig? {
+    val section = configService.createIfAbsentAndLoad("console.yml")
+    if (!section.getBoolean("interactive", true)) {
+        return null
+    }
 
-fun loadConsoleConfig(configService: ConfigService): InteractiveConsoleConfig {
-    val section = configService.createIfAbsentAndLoad("console")
-    return parseConsoleConfig(section)
-}
-
-internal fun parseConsoleConfig(section: ConfigSection): InteractiveConsoleConfig {
     val defaults = TerminalConfig()
     val defaultColors = TerminalColors()
 
@@ -25,7 +19,7 @@ internal fun parseConsoleConfig(section: ConfigSection): InteractiveConsoleConfi
     val menu = section.getSection("menu")
     val colorsSection = section.getSection("colors")
 
-    val terminal = TerminalConfig().apply {
+    return TerminalConfig().apply {
         defaultPrompt = section.getString("prompt", defaults.defaultPrompt)
         autoCompleteWhileTyping = autocomplete.getBoolean("while-typing", defaults.autoCompleteWhileTyping)
         tabCompletion = autocomplete.getBoolean("tab-completion", defaults.tabCompletion)
@@ -43,11 +37,6 @@ internal fun parseConsoleConfig(section: ConfigSection): InteractiveConsoleConfi
             boldSelectedItem = colorsSection.getBoolean("bold-selected-item", defaultColors.boldSelectedItem)
         }
     }
-
-    return InteractiveConsoleConfig(
-        interactive = section.getBoolean("interactive", true),
-        terminal = terminal,
-    )
 }
 
 internal fun parseTerminalColor(

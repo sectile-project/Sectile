@@ -34,7 +34,7 @@ abstract class AbstractConfigService : ConfigService {
      * <p>This is always the first normalized value from [fileExtensions].</p>
      */
     protected val primaryExtension: String
-        get() = fileExtensions.first().normalizedExtension()
+        get() = fileExtensions[0]
 
     /**
      * Creates the file in the current working directory if absent, then loads it.
@@ -123,7 +123,6 @@ abstract class AbstractConfigService : ConfigService {
                 outputFile = Kernel.pluginDirectory.resolve(snapshot.metadata.id.value).resolve(outputFile)
             }
         }
-
         if (outputFile.exists()) {
             return load(outputFile)
         }
@@ -137,7 +136,6 @@ abstract class AbstractConfigService : ConfigService {
             outputFile.parent?.createDirectories()
             Files.copy(it, outputFile, StandardCopyOption.REPLACE_EXISTING)
         }
-
         return load(outputFile)
     }
 
@@ -158,27 +156,29 @@ abstract class AbstractConfigService : ConfigService {
      * @return the normalized file name
      * @throws IllegalArgumentException if the file name is blank
      */
-    protected fun normalizeFileName(fileName: String): String {
-        require(fileName.isNotBlank()) {
-            "fileName cannot be blank."
+     protected fun normalizeFileName(fileName: String): String {
+        val nameLen = fileName.length
+
+        for (extension in fileExtensions) {
+            val extLen = extension.length
+            if (extLen == 0 || extLen > nameLen) continue
+
+            var allEqual = true
+            val offset = nameLen - extLen
+
+            // same as file.endswith but this technic is used to avoid load kotlin internal classes in bootstrap to save some millis
+            for (i in 0 until extLen) {
+                if (fileName[offset + i] != extension[i]) {
+                    allEqual = false
+                    break
+                }
+            }
+
+            if (allEqual) {
+                return fileName
+            }
         }
 
-        val lowercaseName = fileName.lowercase()
-        val hasSupportedExtension = fileExtensions.any { extension ->
-            lowercaseName.endsWith(".${extension.normalizedExtension()}")
-        }
-
-        return if (hasSupportedExtension) {
-            fileName
-        } else {
-            "$fileName.$primaryExtension"
-        }
+        return "$fileName.$primaryExtension"
     }
-
-    /**
-     * Normalizes a file extension by removing a leading dot and converting it to lowercase.
-     *
-     * @return the normalized extension
-     */
-    private fun String.normalizedExtension(): String = trim().removePrefix(".").lowercase()
 }

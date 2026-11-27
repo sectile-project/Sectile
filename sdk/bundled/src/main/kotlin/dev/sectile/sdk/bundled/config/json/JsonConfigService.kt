@@ -7,7 +7,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 object JsonConfigService : AbstractConfigService() {
-    override val fileExtensions: List<String> = listOf("json")
+    override val fileExtensions = arrayOf("json")
 
     override fun load(path: Path): ConfigSection = load(Files.readAllBytes(path))
     override fun load(byteArray: ByteArray, offset: Int, length: Int): ConfigSection = JsonParser().parseObject(byteArray, offset, length)

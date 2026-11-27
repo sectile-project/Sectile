@@ -10,7 +10,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 fun loadPluginConfig(configService: ConfigService): KernelPluginConfig {
-    val config = configService.createIfAbsentAndLoad("plugins")
+    val config = configService.createIfAbsentAndLoad("plugins.yml")
 
     val pathsSection = config.getSection("paths")
     val selectionSection = config.getSection("selection")

@@ -19,8 +19,11 @@ class BoostrapLogger(
 ) : Logger {
 
     private fun getSpyLoggers(): Set<Logger> {
-        val spy = Kernel.loggerSpy as ScopedLoggerSpy
-        return spy.getLoggers()
+        if (Kernel.isInitialized()) {
+            val spy = Kernel.loggerSpy as ScopedLoggerSpy
+            return spy.getLoggers()
+        }
+        return setOf()
     }
 
     private fun isEnabled(level: LogLevel): Boolean = (enabledLevels and (1 shl level.ordinal)) != 0

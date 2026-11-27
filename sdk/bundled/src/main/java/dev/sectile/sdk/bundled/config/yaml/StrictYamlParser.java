@@ -2,7 +2,6 @@ package dev.sectile.sdk.bundled.config.yaml;
 
 import dev.sectile.kernel.config.ConfigSection;
 import dev.sectile.kernel.config.section.MapConfigSection;
-import java.util.LinkedHashMap;
 
 public final class StrictYamlParser {
 
@@ -10,7 +9,7 @@ public final class StrictYamlParser {
   private final YamlReader reader = new YamlReader();
 
   public ConfigSection parse(final byte[] buf, final int offset, final int length) {
-    final ConfigSection result = new MapConfigSection(new LinkedHashMap<>());
+    final ConfigSection result = new MapConfigSection();
     final YamlReader r = this.reader;
     r.reset(buf, offset, length);
     structures.reset(result);

@@ -2,7 +2,6 @@ package dev.sectile.boostrap.logger
 
 import dev.sectile.boostrap.console.Console
 import dev.sectile.boostrap.console.ConsoleSender
-import dev.sectile.boostrap.console.InteractiveConsoleConfig
 import dev.sectile.boostrap.console.loadConsoleConfig
 import dev.sectile.boostrap.console.minimal.MinimalConsole
 import dev.sectile.boostrap.console.terminal.TerminalConsole
@@ -11,6 +10,7 @@ import dev.sectile.boostrap.logger.file.FileAppender
 import dev.sectile.boostrap.logger.file.LogCompressor
 import dev.sectile.boostrap.logger.type.BoostrapLogger
 import dev.sectile.boostrap.logger.type.NoOpLogger
+import dev.sectile.boostrap.terminal.config.TerminalConfig
 import dev.sectile.kernel.Kernel
 import dev.sectile.kernel.config.ConfigService
 import dev.sectile.kernel.logger.JavaLoggerFormatter
@@ -28,18 +28,19 @@ class LoggersLoader {
 
     var console: Console? = null
     val consoleSender: ConsoleSender = ConsoleSender()
-    private var printWriter: PrintWriter? = null
+    private val printWriter = PrintWriter(System.out)
     private var consoleAppender: ConsoleAppender? = null
 
     fun load(configService: ConfigService): Logger {
         val consoleConfig = loadConsoleConfig(configService)
-        val section = configService.createIfAbsentAndLoad("logger")
-        val config = LoggerConfig(section)
-        if (!config.enable) {
+        val section = configService.createIfAbsentAndLoad("logger.yml")
+
+        if (!section.getBoolean("enable", true)) {
             createConsole(consoleConfig)
             return NoOpLogger()
         }
 
+        val config = LoggerConfig(section)
         createConsole(consoleConfig)
 
         val ringBuffer = LogRingBuffer()
@@ -89,11 +90,9 @@ class LoggersLoader {
 
     fun resolveConsole(): Console? = console
 
-    private fun createConsole(config: InteractiveConsoleConfig) {
-        printWriter = PrintWriter(System.out)
-        console = if (config.interactive) {
-            runCatching { TerminalConsole(consoleSender, config.terminal) }
-                .getOrElse { MinimalConsole(consoleSender) }
+    private fun createConsole(config: TerminalConfig?) {
+        console = if (config != null) {
+            TerminalConsole(consoleSender, config)
         } else {
             MinimalConsole(consoleSender)
         }

@@ -1,6 +1,5 @@
 package dev.sectile.kernel.config
 
-import java.io.ByteArrayInputStream
 import java.io.IOException
 import java.nio.file.Path
 
@@ -21,7 +20,7 @@ interface ConfigService {
      * override val fileExtensions: List<String> = listOf("yaml", "yml")
      * }</pre>
      */
-    val fileExtensions: List<String>
+    val fileExtensions: Array<String>
 
     /**
      * Loads a configuration section from the given path.

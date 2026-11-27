@@ -1,6 +1,5 @@
 package dev.sectile.boostrap.network
 
-import dev.sectile.kernel.Kernel
 import dev.sectile.kernel.config.ConfigSection
 import dev.sectile.kernel.config.ConfigService
 import dev.sectile.kernel.logger.Logger
@@ -8,13 +7,14 @@ import dev.sectile.network.internal.NetworkInternal
 import dev.sectile.network.internal.config.AuthConfig
 import dev.sectile.network.internal.config.AuthMode
 import dev.sectile.network.internal.config.NetworkConfig
+import dev.sectile.sdk.bundled.config.json.JsonConfigService
 import dev.sectile.sdk.util.TimeFormatter
 import java.util.UUID
 import kotlin.math.max
 import kotlin.math.min
 
 fun loadNetwork(configService: ConfigService, logger: Logger) {
-    val config = configService.createIfAbsentAndLoad("network")
+    val config = configService.createIfAbsentAndLoad("network.yml")
     val rateLimitSection = config.getSection("rate-limit")
     val authSection = config.getSection("auth")
 
@@ -36,16 +36,15 @@ fun loadNetwork(configService: ConfigService, logger: Logger) {
         auth,
     )
 
-    val transportLogger = Kernel.loggerFactory.createLogger("QuicTransport")
-    NetworkInternal.init(networkConfig, transportLogger).whenComplete { _: Any?, error: Throwable? ->
+    val time = System.currentTimeMillis()
+    NetworkInternal.init(networkConfig, logger, JsonConfigService).whenComplete { _: Any?, error: Throwable? ->
         if (error != null) {
             logger.error("Could not start the network transport", error)
         } else {
-            logger.info("Server networking started")
+            logger.info("Networking starting took ${System.currentTimeMillis() - time} ms")
         }
     }
-
-    Kernel.addStopTask { NetworkInternal.shutdown() }
+    Runtime.getRuntime().addShutdownHook(Thread { NetworkInternal.shutdown() })
 }
 
 private fun loadAuth(section: ConfigSection, logger: Logger): AuthConfig {

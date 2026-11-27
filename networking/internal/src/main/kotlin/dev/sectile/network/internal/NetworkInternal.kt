@@ -55,11 +55,11 @@ class NetworkInternal private constructor(
             return instance.jsonService
         }
 
-        fun init(config: NetworkConfig, logger: Logger): CompletableFuture<Unit> {
+        fun init(config: NetworkConfig, logger: Logger, jsonService: ConfigService): CompletableFuture<Unit> {
             if (ref != null) error("Network internal connector already initialized")
 
             val connection = ServerConnection()
-            ref = NetworkInternal(config, connection, ConfigServiceRegistry["json"])
+            ref = NetworkInternal(config, connection, jsonService)
 
             Network.init(PacketSenderInternal())
 

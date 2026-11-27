@@ -4,8 +4,6 @@ import dev.sectile.kernel.config.ConfigSection
 import kotlin.time.Duration.Companion.seconds
 
 class LoggerConfig(section: ConfigSection) {
-    val enable = section.getBoolean("enable", true)
-
     val prefix = PrefixConfig(section.getSection("prefix"))
     val console = ConsoleConfig(section.getSection("console"))
     val logs = FileLogsConfig(section.getSection("logs"))

@@ -36,31 +36,32 @@ import dev.sectile.sdk.bundled.scanner.ScannerProvider
 
 fun startServer(publicClassLoader: ClassLoader, startTime: Long) {
     val configService = YamlConfigService
-    ConfigServiceRegistry.register(YamlConfigService)
-    ConfigServiceRegistry.register(JsonConfigService)
 
     val loggersLoader = LoggersLoader()
     val logger = loggersLoader.load(configService)
+
+    loadNetwork(configService, logger) // start networking as soon as possible because it takes >200ms
 
     val pluginStarter = Microkernel.init(logger, loadPluginConfig(configService), publicClassLoader)
 
     val commandRegistry = startEngine()
     startSDK()
-
     pluginStarter.run()
 
     val console = loggersLoader.resolveConsole()
     registerBuiltinCommands(console, commandRegistry)
-    loadNetwork(configService, logger)
     WorldBootstrap.init(logger, NetworkInternal.packetHandlers, StageHooks)
     CommandBootstrap.initNetwork(logger, NetworkInternal.packetHandlers, StageHooks)
 
-    logger.info("Server started in ${System.currentTimeMillis() - startTime}ms")
+    logger.info("Boostrap started in ${System.currentTimeMillis() - startTime}ms")
 
     console?.run()
 }
 
 private fun startSDK() {
+    ConfigServiceRegistry.register(YamlConfigService)
+    ConfigServiceRegistry.register(JsonConfigService)
+
     KernelPluginScopeFactory.registerDefaultProvider { ScannerProvider() }
     KernelPluginScopeFactory.registerDefaultProvider {
         ProtectedLazyProvider(PacketHandlerRegistry::class.java) {
